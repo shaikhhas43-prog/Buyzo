@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#4c2bd9">
+<title>BUYZO — Online Marketplace</title>
+<link rel="stylesheet" href="./style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header class="top">
+  <a class="logo" href="./index.html"><strong>BUY<span>ZO</span></strong><small>MARKETPLACE</small></a>
+  <div class="search">
+    <input id="search" type="search" placeholder="Search products, brands and more">
+    <button onclick="searchProducts()">Search</button>
+  </div>
+  <button class="headBtn" onclick="openAccount()">👤 <span>Account</span></button>
+  <button class="cartBtn" onclick="openCart()">🛒 <span>Cart</span><b id="cartCount">0</b></button>
+</header>
+
+<nav class="nav">
+  <button onclick="filterCat('All')">All</button>
+  <button onclick="filterCat('Fashion')">Fashion</button>
+  <button onclick="filterCat('Mobiles')">Mobiles</button>
+  <button onclick="filterCat('Electronics')">Electronics</button>
+  <button onclick="filterCat('Home')">Home</button>
+  <button onclick="filterCat('Beauty')">Beauty</button>
+  <button onclick="filterCat('Sports')">Sports</button>
+</nav>
+
+<main>
+<section class="hero">
+  <div>
+    <div class="tag">BUYZO MARKETPLACE</div>
+    <h1>Everything you need.<br><span>One smart place.</span></h1>
+    <p>Compare products, discover great deals and shop from sellers across India.</p>
+    <button class="orange" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Explore Products →</button>
+  </div>
+  <div class="heroCard">
+    <div class="miniLogo">B</div>
+    <b>BUYZO</b>
+    <small>Smart shopping starts here.</small>
+  </div>
+</section>
+
+<section class="strip">
+  <div>🚚 <b>Fast Delivery</b><small>Across India</small></div>
+  <div>🔒 <b>Secure Checkout</b><small>Protected payments</small></div>
+  <div>↩️ <b>Easy Returns</b><small>Seller return policy</small></div>
+  <div>✓ <b>Verified Sellers</b><small>Quality marketplace</small></div>
+</section>
+
+<section>
+  <div class="sectionHead">
+    <h2>Shop by Category</h2>
+    <button onclick="filterCat('All')">View all →</button>
+  </div>
+  <div class="catGrid">
+    <button onclick="filterCat('Mobiles')">📱<b>Mobiles</b></button>
+    <button onclick="filterCat('Fashion')">👕<b>Fashion</b></button>
+    <button onclick="filterCat('Electronics')">💻<b>Electronics</b></button>
+    <button onclick="filterCat('Home')">🏠<b>Home</b></button>
+    <button onclick="filterCat('Beauty')">💄<b>Beauty</b></button>
+    <button onclick="filterCat('Sports')">⚽<b>Sports</b></button>
+  </div>
+</section>
+
+<section id="products">
+  <div class="sectionHead">
+    <h2>Popular on BUYZO</h2>
+    <button onclick="filterCat('All')">All products →</button>
+  </div>
+  <div id="productGrid" class="grid"></div>
+</section>
+</main>
+
+<div id="accountModal" class="overlay">
+  <div class="modal">
+    <button class="x" onclick="closeModal('accountModal')">×</button>
+    <div class="modalBrand">BUY<span>ZO</span></div>
+    <div class="tabs">
+      <button id="loginTab" class="selected" onclick="loginForm()">Login</button>
+      <button id="signupTab" onclick="signupForm()">Create account</button>
+    </div>
+    <form id="accountForm"></form>
+    <p id="accountMsg" class="msg"></p>
+  </div>
+</div>
+
+<div id="cartModal" class="overlay">
+  <div class="modal cartModal">
+    <button class="x" onclick="closeModal('cartModal')">×</button>
+    <div class="modalBrand">Your Cart 🛒</div>
+    <div id="cartItems"></div>
+    <div class="total">Total <b id="cartTotal">₹0</b></div>
+    <button class="orange wide" onclick="checkout()">Proceed to Checkout</button>
+  </div>
+</div>
+
+<footer>
+  <div class="footerLogo">BUY<span>ZO</span></div>
+  <p>Buy Smart. Buyzo.</p>
+  <small>© 2026 BUYZO. Demo marketplace.</small>
+</footer>
+
+<script src="./app.js"></script>
+</body>
+</html>

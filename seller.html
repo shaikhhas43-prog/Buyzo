@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BUYZO Seller Panel</title>
+<link rel="stylesheet" href="./seller.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="top">
+  <a href="./index.html" class="logo">BUY<span>ZO</span> <small>SELLER</small></a>
+  <div class="account"><span id="email"></span><button onclick="logout()">Logout</button></div>
+</header>
+
+<section id="login" class="login-page">
+  <div class="login-box">
+    <div class="brand">BUY<span>ZO</span></div>
+    <h2>Seller Login</h2>
+    <input id="le" type="email" placeholder="Email">
+    <input id="lp" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="loginMsg"></p>
+  </div>
+</section>
+
+<main id="app" style="display:none">
+  <section class="banner"><h1>Seller Dashboard</h1><p>Add and manage your BUYZO products.</p></section>
+  <div id="notice"></div>
+  <div class="layout">
+    <section class="card">
+      <h2>Add Product</h2>
+      <input id="name" placeholder="Product name">
+      <select id="category">
+        <option>Mobiles</option><option>Fashion</option><option>Electronics</option><option>Home</option><option>Beauty</option><option>Sports</option>
+      </select>
+      <input id="price" type="number" min="1" placeholder="Selling price ₹">
+      <input id="old" type="number" min="0" placeholder="MRP ₹ (optional)">
+      <input id="stock" type="number" min="0" value="1" placeholder="Stock quantity">
+      <input id="emoji" placeholder="Emoji (optional, e.g. 📱)">
+      <label>Product Photo</label>
+      <input id="productImage" type="file" accept="image/*" onchange="previewImage()">
+      <img id="imagePreview" class="preview" style="display:none">
+      <button class="add" onclick="addProduct()">Add Product</button>
+    </section>
+
+    <section class="card">
+      <div class="listHead"><h2>Your Products (<span id="count">0</span>)</h2><button onclick="load()">↻ Refresh</button></div>
+      <div id="list"></div>
+    </section>
+  </div>
+</main>
+<script src="./seller.js"></script>
+</body>
+</html>
