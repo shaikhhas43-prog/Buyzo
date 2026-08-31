@@ -1,4 +1,215 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BUYZO Seller Panel</title><link rel="stylesheet" href="seller.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body>
-<header class="top"><div class="logo">BUY<span>ZO</span> <small>SELLER</small></div><div><span id="email"></span> <button onclick="logout()">Logout</button></div></header>
-<div id="login" class="box login"><div class="brand">BUY<span>ZO</span></div><h1>Seller Login</h1><input id="le" placeholder="Email"><input id="lp" type="password" placeholder="Password"><button class="primary" onclick="login()">Login</button><p id="loginMsg"></p></div>
-<main id="app" style="display:none"><div class="wrap"><section class="hero"><h1>Seller Dashboard</h1><p>Add and manage your BUYZO products.</p></section><div class="grid"><section class="box"><h2>Add Product</h2><input id="name" placeholder="Product name"><select id="category"><option>Mobiles</option><option>Fashion</option><option>Electronics</option><option>Home</option><option>Beauty</option><option>Sports</option></select><input id="price" type="number" placeholder="Selling price ₹"><input id="old" type="number" placeholder="MRP ₹ (optional)"><input id="emoji" placeholder="Product emoji e.g. 👕"><button class="primary" onclick="addProduct()">Add Product</button><p id="notice" class="notice"></p></section><section class="box"><h2>Your Products (<span id="count">0</span>)</h2><div id="list"></div></section></div></div></main><script src="seller.js"></script></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BUYZO Seller Panel</title>
+
+  <link rel="stylesheet" href="seller.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+<header class="top">
+  <div class="logo">
+    BUY<span>ZO</span> <small>SELLER</small>
+  </div>
+
+  <div>
+    <span id="email"></span>
+    <button onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div id="login" class="box login">
+
+  <div class="brand">
+    BUY<span>ZO</span>
+  </div>
+
+  <h1>Seller Login</h1>
+
+  <input id="le" placeholder="Email">
+
+  <input
+    id="lp"
+    type="password"
+    placeholder="Password"
+  >
+
+  <button class="primary" onclick="login()">
+    Login
+  </button>
+
+  <p id="loginMsg"></p>
+
+</div>
+
+
+<!-- SELLER APP -->
+<main id="app" style="display:none">
+
+  <div class="wrap">
+
+    <section class="hero">
+      <h1>Seller Dashboard</h1>
+      <p>Add and manage your BUYZO products.</p>
+    </section>
+
+
+    <div class="grid">
+
+      <!-- ADD PRODUCT -->
+      <section class="box">
+
+        <h2>Add Product</h2>
+
+        <input
+          id="name"
+          placeholder="Product name"
+        >
+
+        <select id="category">
+          <option>Mobiles</option>
+          <option>Fashion</option>
+          <option>Electronics</option>
+          <option>Home</option>
+          <option>Beauty</option>
+          <option>Sports</option>
+        </select>
+
+        <input
+          id="price"
+          type="number"
+          placeholder="Selling price ₹"
+        >
+
+        <input
+          id="old"
+          type="number"
+          placeholder="MRP ₹ (optional)"
+        >
+
+        <!-- STOCK -->
+        <input
+          id="stock"
+          type="number"
+          min="0"
+          placeholder="Stock quantity"
+        >
+
+        <!-- REAL PRODUCT PHOTO -->
+        <label
+          for="productImage"
+          style="
+            display:block;
+            margin:12px 0 6px;
+            font-weight:600;
+          "
+        >
+          Product Photo
+        </label>
+
+        <input
+          id="productImage"
+          type="file"
+          accept="image/*"
+        >
+
+        <!-- IMAGE PREVIEW -->
+        <div
+          id="imagePreview"
+          style="
+            display:none;
+            margin-top:12px;
+            text-align:center;
+          "
+        >
+          <img
+            id="previewImg"
+            src=""
+            alt="Product preview"
+            style="
+              width:150px;
+              height:150px;
+              object-fit:cover;
+              border-radius:12px;
+              border:1px solid #ddd;
+            "
+          >
+        </div>
+
+        <!-- OLD EMOJI OPTIONAL -->
+        <input
+          id="emoji"
+          placeholder="Emoji (optional)"
+        >
+
+        <button
+          class="primary"
+          onclick="addProduct()"
+        >
+          Upload & Add Product
+        </button>
+
+        <p
+          id="notice"
+          class="notice"
+        ></p>
+
+      </section>
+
+
+      <!-- PRODUCTS -->
+      <section class="box">
+
+        <h2>
+          Your Products
+          (<span id="count">0</span>)
+        </h2>
+
+        <div id="list"></div>
+
+      </section>
+
+    </div>
+
+  </div>
+
+</main>
+
+
+<script>
+
+  /* IMAGE PREVIEW */
+
+  const imageInput =
+    document.getElementById("productImage");
+
+  imageInput.addEventListener("change", function () {
+
+    const file = this.files[0];
+
+    if (!file) {
+      document.getElementById("imagePreview").style.display = "none";
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+
+    document.getElementById("previewImg").src = url;
+
+    document.getElementById("imagePreview").style.display = "block";
+
+  });
+
+</script>
+
+
+<script src="seller.js"></script>
+
+</body>
+</html>
