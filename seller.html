@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
 <body>
 
 <header class="top">
+
   <div class="logo">
     BUY<span>ZO</span>
     <small>SELLER</small>
@@ -23,6 +25,7 @@
     <span id="email"></span>
     <button onclick="logout()">Logout</button>
   </div>
+
 </header>
 
 
@@ -64,7 +67,7 @@
 </div>
 
 
-<!-- APP -->
+<!-- SELLER DASHBOARD -->
 
 <main id="app" style="display:none;">
 
@@ -90,20 +93,39 @@
 
         <h2>Add Product</h2>
 
+
         <input
           id="name"
           type="text"
           placeholder="Product name"
         >
 
+
         <select id="category">
 
-          <option value="Mobiles">Mobiles</option>
-          <option value="Fashion">Fashion</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Home">Home</option>
-          <option value="Beauty">Beauty</option>
-          <option value="Sports">Sports</option>
+          <option value="Mobiles">
+            Mobiles
+          </option>
+
+          <option value="Fashion">
+            Fashion
+          </option>
+
+          <option value="Electronics">
+            Electronics
+          </option>
+
+          <option value="Home">
+            Home
+          </option>
+
+          <option value="Beauty">
+            Beauty
+          </option>
+
+          <option value="Sports">
+            Sports
+          </option>
 
         </select>
 
@@ -133,9 +155,12 @@
         >
 
 
+        <!-- PRODUCT PHOTO -->
+
         <label class="photo-title">
           Product Photo
         </label>
+
 
         <input
           id="productImage"
@@ -145,28 +170,36 @@
         >
 
 
+        <!-- PHOTO PREVIEW -->
+
         <div
           id="previewBox"
           class="preview-box"
           style="display:none;"
         >
 
-          <img id="imagePreview">
+          <img
+            id="imagePreview"
+            src=""
+            alt="Product Preview"
+          >
 
           <button
             type="button"
             onclick="removePreview()"
           >
-            Remove
+            Remove Photo
           </button>
 
         </div>
 
 
+        <!-- OPTIONAL EMOJI -->
+
         <input
           id="emoji"
           type="text"
-          placeholder="Emoji (optional) e.g. 👕"
+          placeholder="Emoji (optional)"
         >
 
 
@@ -178,12 +211,15 @@
         </button>
 
 
-        <p id="notice" class="notice"></p>
+        <p
+          id="notice"
+          class="notice"
+        ></p>
 
       </section>
 
 
-      <!-- PRODUCTS -->
+      <!-- PRODUCT LIST -->
 
       <section class="box products-box">
 
@@ -218,4 +254,5 @@
 <script src="seller.js"></script>
 
 </body>
+
 </html>
