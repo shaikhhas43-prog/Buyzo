@@ -167,10 +167,58 @@ async function doSignup(){
   if(error){if(msg)msg.textContent=error.message;return;}
   if(msg)msg.textContent="Account created. Email verify karo.";
 }
-function checkout(){
-  if(!cart.length){alert("Cart empty hai.");return;}
-  alert("Checkout system abhi demo mode me hai.");
+function checkout() {
+  if (!cart.length) {
+    alert("Cart empty hai.");
+    return;
+  }
+
+  const total = cart.reduce(
+    (sum, item) =>
+      sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0
+  );
+
+  const items = cart.map(item =>
+    `${item.name} x ${item.quantity}`
+  ).join("\n");
+
+  const customerName = prompt("Apna naam enter karo:");
+  if (!customerName) return;
+
+  const mobile = prompt("Apna mobile number enter karo:");
+  if (!mobile) return;
+
+  const address = prompt("Delivery address enter karo:");
+  if (!address) return;
+
+  const orderMessage =
+`🛍️ BUYZO ORDER
+
+👤 Name: ${customerName}
+📱 Mobile: ${mobile}
+
+📦 Products:
+${items}
+
+💰 Total: ₹${total.toLocaleString("en-IN")}
+
+📍 Delivery Address:
+${address}
+
+Thank you for shopping with BUYZO!`;
+
+  const whatsappNumber = "919XXXXXXXXX";
+
+  const url =
+    "https://wa.me/" +
+    whatsappNumber +
+    "?text=" +
+    encodeURIComponent(orderMessage);
+
+  window.open(url, "_blank");
 }
+
 function closeModal(id){document.getElementById(id)?.classList.remove("show");}
 function escapeHTML(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
 function escapeAttr(v){return escapeHTML(v).replace(/`/g,"&#096;");}
