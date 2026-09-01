@@ -7,149 +7,46 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <header class="top">
-  <a class="logo" href="#" aria-label="BUYZO"><strong>BUY<span>ZO</span></strong><small>MARKETPLACE</small></a>
+  <a class="logo" href="#"><strong>BUY<span>ZO</span></strong><small>MARKETPLACE</small></a>
   <div class="search"><input id="search" placeholder="Search for products, brands and more"><button onclick="searchProducts()">Search</button></div>
   <button class="headBtn" onclick="openAccount()">👤 <span>Account</span></button>
   <button class="cartBtn" onclick="openCart()">🛒 <span>Cart</span><b id="cartCount">0</b></button>
 </header>
-
 <nav class="nav">
-  <button onclick="filterCat('All')">All</button>
-  <button onclick="filterCat('Fashion')">Fashion</button>
-  <button onclick="filterCat('Mobiles')">Mobiles</button>
-  <button onclick="filterCat('Electronics')">Electronics</button>
-  <button onclick="filterCat('Home')">Home</button>
-  <button onclick="filterCat('Beauty')">Beauty</button>
-  <button onclick="filterCat('Sports')">Sports</button>
+<button onclick="filterCat('All')">All</button><button onclick="filterCat('Fashion')">Fashion</button>
+<button onclick="filterCat('Mobiles')">Mobiles</button><button onclick="filterCat('Electronics')">Electronics</button>
+<button onclick="filterCat('Home')">Home</button><button onclick="filterCat('Beauty')">Beauty</button><button onclick="filterCat('Sports')">Sports</button>
 </nav>
-
 <main>
-<section class="hero">
-  <div>
-    <div class="tag">BUYZO MARKETPLACE</div>
-    <h1>Everything you need.<br><span>One smart place.</span></h1>
-    <p>Compare products, discover great deals and shop from sellers across India.</p>
-    <button class="orange" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Explore Products →</button>
-  </div>
-  <div class="heroCard"><div class="miniLogo">B</div><b>BUYZO</b><small>Smart shopping starts here.</small></div>
-</section>
-
-<section class="strip">
-  <div>🚚 <b>Fast Delivery</b><small>Across India</small></div>
-  <div>🔒 <b>Secure Checkout</b><small>Protected payments</small></div>
-  <div>↩️ <b>Easy Returns</b><small>Seller return policy</small></div>
-  <div>✓ <b>Verified Sellers</b><small>Quality marketplace</small></div>
-</section>
-
-<section>
-  <div class="sectionHead"><h2>Shop by Category</h2><button onclick="filterCat('All')">View all →</button></div>
-  <div class="catGrid">
-    <button onclick="filterCat('Mobiles')">📱 <b>Mobiles</b></button>
-    <button onclick="filterCat('Fashion')">👕 <b>Fashion</b></button>
-    <button onclick="filterCat('Electronics')">💻 <b>Electronics</b></button>
-    <button onclick="filterCat('Home')">🏠 <b>Home</b></button>
-    <button onclick="filterCat('Beauty')">💄 <b>Beauty</b></button>
-    <button onclick="filterCat('Sports')">⚽ <b>Sports</b></button>
-  </div>
-</section>
-
-<section id="products">
-  <div class="sectionHead"><h2>Popular on BUYZO</h2><button onclick="filterCat('All')">All products →</button></div>
-  <div id="productGrid" class="grid"></div>
-</section>
+<section class="hero"><div><div class="tag">BUYZO MARKETPLACE</div><h1>Everything you need.<br><span>One smart place.</span></h1><p>Compare products, discover great deals and shop from sellers across India.</p><button class="orange" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">Explore Products →</button></div><div class="heroCard"><div class="miniLogo">B</div><b>BUYZO</b><small>Smart shopping starts here.</small></div></section>
+<section class="strip"><div>🚚 <b>Fast Delivery</b><small>Across India</small></div><div>🔒 <b>Secure Checkout</b><small>Protected payments</small></div><div>↩️ <b>Easy Returns</b><small>Seller return policy</small></div><div>✓ <b>Verified Sellers</b><small>Quality marketplace</small></div></section>
+<section><div class="sectionHead"><h2>Shop by Category</h2><button onclick="filterCat('All')">View all →</button></div><div class="catGrid">
+<button onclick="filterCat('Mobiles')">📱 <b>Mobiles</b></button><button onclick="filterCat('Fashion')">👕 <b>Fashion</b></button><button onclick="filterCat('Electronics')">💻 <b>Electronics</b></button><button onclick="filterCat('Home')">🏠 <b>Home</b></button><button onclick="filterCat('Beauty')">💄 <b>Beauty</b></button><button onclick="filterCat('Sports')">⚽ <b>Sports</b></button>
+</div></section>
+<section id="products"><div class="sectionHead"><h2>Popular on BUYZO</h2><button onclick="filterCat('All')">All products →</button></div><div id="productGrid" class="grid"></div></section>
 </main>
 
-<!-- Cart -->
-<div id="cartModal" class="overlay">
-  <div class="modal cartModal">
-    <button class="x" onclick="closeModal('cartModal')">×</button>
-    <div class="modalBrand">Your Cart 🛒</div>
-    <div id="cartItems"></div>
-    <div class="total">Total <b id="cartTotal">₹0</b></div>
-    <button class="orange wide" onclick="startCheckout()">Proceed to Checkout</button>
-  </div>
+<div id="cartModal" class="overlay"><div class="modal cartModal"><button class="x" onclick="closeModal('cartModal')">×</button><div class="modalBrand">Your Cart 🛒</div><div id="cartItems"></div><div class="total">Total <b id="cartTotal">₹0</b></div><button class="orange wide" onclick="startCheckout()">Proceed to Checkout</button></div></div>
+
+<div id="accountModal" class="overlay"><div class="modal"><button class="x" onclick="closeModal('accountModal')">×</button><div class="modalBrand">BUY<span>ZO</span></div><div class="tabs"><button id="loginTab" class="selected" onclick="loginForm()">Login</button><button id="signupTab" onclick="signupForm()">Create account</button></div><form id="accountForm"></form><p id="accountMsg"></p></div></div>
+
+<div id="checkoutModal" class="overlay"><div class="checkoutModal"><button class="x" onclick="closeModal('checkoutModal')">×</button><div class="checkoutTitle"><span>←</span><div><h2>Complete your order</h2><small>Enter your delivery details</small></div></div>
+<div class="checkoutLayout"><form id="checkoutForm" class="checkoutForm">
+<div class="checkoutCard"><h3>📍 Delivery Address</h3>
+<label>Full Name<input id="coName" type="text" placeholder="Enter your full name" required></label>
+<label>Mobile Number<input id="coMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" required></label>
+<label>Full Address<textarea id="coAddress" rows="3" placeholder="House no., building, street, area" required></textarea></label>
+<div class="two"><label>City<input id="coCity" type="text" placeholder="City" required></label><label>State<input id="coState" type="text" placeholder="State" required></label></div>
+<label>Pincode<input id="coPincode" type="tel" inputmode="numeric" maxlength="6" placeholder="6-digit pincode" required></label>
 </div>
+<div class="checkoutCard"><h3>💳 Payment Method</h3><label class="paymentOption"><input type="radio" name="payment" value="Cash on Delivery" checked><span><b>Cash on Delivery</b><small>Pay when your order arrives</small></span></label><div class="paymentNote">Online payment can be connected later. For now, BUYZO accepts Cash on Delivery.</div></div>
+<button class="placeOrder" type="submit">Place Order</button></form>
+<aside class="orderSummary"><h3>Order Summary</h3><div id="checkoutItems"></div><div class="summaryLine"><span>Subtotal</span><b id="checkoutSubtotal">₹0</b></div><div class="summaryLine"><span>Delivery</span><b>FREE</b></div><hr><div class="summaryTotal"><span>Total</span><b id="checkoutTotal">₹0</b></div></aside></div></div></div>
 
-<!-- Account -->
-<div id="accountModal" class="overlay">
-  <div class="modal">
-    <button class="x" onclick="closeModal('accountModal')">×</button>
-    <div class="modalBrand">BUY<span>ZO</span></div>
-    <div class="tabs">
-      <button id="loginTab" class="selected" onclick="loginForm()">Login</button>
-      <button id="signupTab" onclick="signupForm()">Create account</button>
-    </div>
-    <form id="accountForm"></form>
-    <p id="accountMsg"></p>
-  </div>
-</div>
+<div id="successModal" class="overlay"><div class="successBox"><div class="successIcon">✓</div><h2>Order placed successfully!</h2><p id="successText">Your order details are ready.</p><button class="orange wide" onclick="sendOrderWhatsApp()">📲 Send Order on WhatsApp</button><button class="secondary wide" onclick="finishOrder()">Continue Shopping</button></div></div>
 
-<!-- Checkout -->
-<div id="checkoutModal" class="overlay">
-  <div class="checkoutModal">
-    <button class="x" onclick="closeModal('checkoutModal')">×</button>
-    <div class="checkoutTitle">
-      <span>←</span>
-      <div><h2>Complete your order</h2><small>Enter your delivery details</small></div>
-    </div>
-
-    <div class="checkoutLayout">
-      <form id="checkoutForm" class="checkoutForm">
-        <div class="checkoutCard">
-          <h3>📍 Delivery Address</h3>
-          <label>Full Name<input id="coName" type="text" placeholder="Enter your full name" required></label>
-          <label>Mobile Number<input id="coMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" required></label>
-          <label>Full Address<textarea id="coAddress" rows="3" placeholder="House no., building, street, area" required></textarea></label>
-          <div class="two">
-            <label>City<input id="coCity" type="text" placeholder="City" required></label>
-            <label>State<input id="coState" type="text" placeholder="State" required></label>
-          </div>
-          <label>Pincode<input id="coPincode" type="tel" inputmode="numeric" maxlength="6" placeholder="6-digit pincode" required></label>
-        </div>
-
-        <div class="checkoutCard">
-          <h3>💳 Payment Method</h3>
-          <label class="paymentOption">
-            <input type="radio" name="payment" value="Cash on Delivery" checked>
-            <span><b>Cash on Delivery</b><small>Pay when your order arrives</small></span>
-          </label>
-          <div class="paymentNote">Online payment can be connected later. For now, BUYZO accepts Cash on Delivery.</div>
-        </div>
-
-        <button class="placeOrder" type="submit">Place Order</button>
-      </form>
-
-      <aside class="orderSummary">
-        <h3>Order Summary</h3>
-        <div id="checkoutItems"></div>
-        <div class="summaryLine"><span>Subtotal</span><b id="checkoutSubtotal">₹0</b></div>
-        <div class="summaryLine"><span>Delivery</span><b>FREE</b></div>
-        <hr>
-        <div class="summaryTotal"><span>Total</span><b id="checkoutTotal">₹0</b></div>
-      </aside>
-    </div>
-  </div>
-</div>
-
-<!-- Success -->
-<div id="successModal" class="overlay">
-  <div class="successBox">
-    <div class="successIcon">✓</div>
-    <h2>Order placed successfully!</h2>
-    <p id="successText">Your order details are ready.</p>
-    <button class="orange wide" onclick="sendOrderWhatsApp()">Send Order on WhatsApp</button>
-    <button class="secondary wide" onclick="finishOrder()">Continue Shopping</button>
-  </div>
-</div>
-
-<footer>
-  <div class="footerLogo">BUY<span>ZO</span></div>
-  <p>Buy Smart. Buyzo.</p>
-  <small>© 2026 BUYZO. Marketplace.</small>
-</footer>
-
+<footer><div class="footerLogo">BUY<span>ZO</span></div><p>Buy Smart. Buyzo.</p><small>© 2026 BUYZO. Marketplace.</small></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>
