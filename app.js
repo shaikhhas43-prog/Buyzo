@@ -1,6 +1,6 @@
 const SUPABASE_URL="https://ahhrhjucbdddcdlzjokg.supabase.co";
 const SUPABASE_KEY="sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
-const WHATSAPP_NUMBER="919XXXXXXXXX"; // <-- yahan apna WhatsApp number daalo
+const WHATSAPP_NUMBER = "919725231594"; // <-- yahan apna WhatsApp number daalo
 
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let allProducts=[],filteredProducts=[];
