@@ -691,6 +691,70 @@ async function updateOrderStatus(id, status) {
 
 async function login() {
 
+  const email = document
+    .getElementById("le")
+    .value
+    .trim();
+
+  const password = document
+    .getElementById("lp")
+    .value;
+
+  const msg = document.getElementById("loginMsg");
+
+  if (!email || !password) {
+    msg.textContent = "Email aur password enter karo.";
+    return;
+  }
+
+  msg.textContent = "Login ho raha hai...";
+
+  try {
+
+    const { data, error } =
+      await db.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+    if (error) {
+      console.error("LOGIN ERROR:", error);
+
+      msg.textContent =
+        "❌ " + error.message;
+
+      return;
+    }
+
+    if (!data.session) {
+      msg.textContent =
+        "❌ Login session nahi bana.";
+      return;
+    }
+
+    user = data.user;
+
+    msg.textContent =
+      "✅ Login successful!";
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+
+    document.getElementById("email").textContent =
+      user.email || "";
+
+    await load();
+    await loadOrders();
+
+  } catch (err) {
+
+    console.error(err);
+
+    msg.textContent =
+      "❌ " + (err.message || "Login failed");
+
+  }
+}
   const email =
     document.getElementById("le")
       .value
