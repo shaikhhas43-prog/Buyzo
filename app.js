@@ -9,11 +9,9 @@ const db = window.supabase.createClient(
 
 let allProducts = [];
 let filteredProducts = [];
-
 let cart = JSON.parse(
   localStorage.getItem("buyzo_cart") || "[]"
 );
-
 let currentOrder = null;
 
 
@@ -37,12 +35,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("checkoutForm")
     ?.addEventListener("submit", placeOrder);
-
 });
 
 
 /* =========================
-   LOAD PRODUCTS
+   PRODUCTS
 ========================= */
 
 async function loadProducts() {
@@ -51,51 +48,86 @@ async function loadProducts() {
 
   if (!grid) return;
 
-  grid.innerHTML =
-    '<div class="loading">Loading BUYZO products...</div>';
+  grid.innerHTML = `
+    <div class="loading">
+      Loading BUYZO products...
+    </div>
+  `;
 
-  const { data, error } = await db
-    .from("products")
-    .select(`
-      id,
-      name,
-      category,
-      price,
-      old_price,
-      stock,
-      emoji,
-      image_url,
-      seller_id,
-      created_at
-    `)
-    .order("created_at", {
-      ascending: false
-    });
+  try {
 
-  if (error) {
+    const { data, error } = await db
+      .from("products")
+      .select(`
+        id,
+        name,
+        category,
+        price,
+        old_price,
+        stock,
+        emoji,
+        image_url,
+        seller_id,
+        created_at
+      `)
+      .order("created_at", {
+        ascending: false
+      });
 
-    console.error("PRODUCT ERROR:", error);
+    if (error) {
+
+      console.error("PRODUCT ERROR:", error);
+
+      grid.innerHTML = `
+        <div class="empty">
+          <h3>Products load nahi ho rahe ❌</h3>
+
+          <p>
+            ${escapeHTML(error.message)}
+          </p>
+
+          <button
+            class="orange"
+            onclick="loadProducts()"
+          >
+            Try Again
+          </button>
+        </div>
+      `;
+
+      return;
+    }
+
+    console.log("PRODUCTS:", data);
+
+    allProducts = data || [];
+    filteredProducts = [...allProducts];
+
+    renderProducts();
+
+  } catch (err) {
+
+    console.error(err);
 
     grid.innerHTML = `
       <div class="empty">
-        <h3>Products load nahi ho rahe.</h3>
-        <p>${escapeHTML(error.message)}</p>
+        <h3>Something went wrong ❌</h3>
+
+        <p>
+          ${escapeHTML(err.message)}
+        </p>
+
+        <button
+          class="orange"
+          onclick="loadProducts()"
+        >
+          Try Again
+        </button>
       </div>
     `;
-
-    return;
   }
-
-  allProducts = data || [];
-  filteredProducts = [...allProducts];
-
-  renderProducts();
 }
 
-
-/* =========================
-   RENDER PRODUCTS
-========================= */
 
 function renderProducts() {
 
@@ -108,7 +140,17 @@ function renderProducts() {
     grid.innerHTML = `
       <div class="empty">
         <h3>No products found</h3>
-        <p>Abhi product available nahi hai.</p>
+
+        <p>
+          Supabase me product nahi mila.
+        </p>
+
+        <button
+          class="orange"
+          onclick="loadProducts()"
+        >
+          Refresh Products
+        </button>
       </div>
     `;
 
@@ -121,10 +163,6 @@ function renderProducts() {
       .join("");
 }
 
-
-/* =========================
-   PRODUCT CARD
-========================= */
 
 function createProductCard(p) {
 
@@ -142,7 +180,9 @@ function createProductCard(p) {
 
   const discount =
     old > price
-      ? Math.round(((old - price) / old) * 100)
+      ? Math.round(
+          ((old - price) / old) * 100
+        )
       : 0;
 
   return `
@@ -198,7 +238,7 @@ function createProductCard(p) {
           ${
             stock > 0
               ? `✓ In stock (${stock})`
-              : "✕ Out of stock"
+              : `✕ Out of stock`
           }
 
         </div>
@@ -208,11 +248,13 @@ function createProductCard(p) {
           onclick="addToCart(${Number(p.id)})"
           ${stock <= 0 ? "disabled" : ""}
         >
+
           ${
             stock <= 0
               ? "Out of Stock"
               : "🛒 Add to Cart"
           }
+
         </button>
 
       </div>
@@ -223,7 +265,7 @@ function createProductCard(p) {
 
 
 /* =========================
-   CATEGORY
+   FILTER
 ========================= */
 
 function filterCat(category) {
@@ -248,10 +290,6 @@ function filterCat(category) {
 }
 
 
-/* =========================
-   SEARCH
-========================= */
-
 function searchProducts() {
 
   const q =
@@ -264,13 +302,15 @@ function searchProducts() {
   filteredProducts =
     !q
       ? [...allProducts]
-      : allProducts.filter(p =>
-          String(p.name || "")
-            .toLowerCase()
-            .includes(q) ||
-          String(p.category || "")
-            .toLowerCase()
-            .includes(q)
+      : allProducts.filter(
+          p =>
+            String(p.name || "")
+              .toLowerCase()
+              .includes(q) ||
+
+            String(p.category || "")
+              .toLowerCase()
+              .includes(q)
         );
 
   renderProducts();
@@ -300,9 +340,7 @@ function addToCart(id) {
     Number(p.stock || 0);
 
   if (stock <= 0) {
-
     alert("Ye product out of stock hai.");
-
     return;
   }
 
@@ -314,11 +352,7 @@ function addToCart(id) {
   if (item) {
 
     if (item.quantity >= stock) {
-
-      alert(
-        "Available stock itna hi hai."
-      );
-
+      alert("Available stock itna hi hai.");
       return;
     }
 
@@ -333,7 +367,6 @@ function addToCart(id) {
       image_url: p.image_url || "",
       quantity: 1
     });
-
   }
 
   saveCart();
@@ -341,10 +374,6 @@ function addToCart(id) {
   renderCart();
 }
 
-
-/* =========================
-   CART COUNT
-========================= */
 
 function updateCartCount() {
 
@@ -362,10 +391,6 @@ function updateCartCount() {
 }
 
 
-/* =========================
-   SAVE CART
-========================= */
-
 function saveCart() {
 
   localStorage.setItem(
@@ -374,10 +399,6 @@ function saveCart() {
   );
 }
 
-
-/* =========================
-   OPEN CART
-========================= */
 
 function openCart() {
 
@@ -388,10 +409,6 @@ function openCart() {
   renderCart();
 }
 
-
-/* =========================
-   RENDER CART
-========================= */
 
 function renderCart() {
 
@@ -407,14 +424,20 @@ function renderCart() {
 
     box.innerHTML = `
       <div class="empty">
-        <h3>Your cart is empty 🛒</h3>
-        <p>Products add karo.</p>
+
+        <h3>
+          Your cart is empty 🛒
+        </h3>
+
+        <p>
+          Products add karo.
+        </p>
+
       </div>
     `;
 
-    if (totalEl) {
+    if (totalEl)
       totalEl.textContent = "₹0";
-    }
 
     return;
   }
@@ -440,7 +463,7 @@ function renderCart() {
             src="${escapeAttr(
               item.image_url || fallback
             )}"
-            onerror="this.onerror=null;this.src='${fallback}'"
+            onerror="this.src='${fallback}'"
           >
 
           <div>
@@ -491,15 +514,11 @@ function renderCart() {
   if (totalEl) {
 
     totalEl.textContent =
-      "₹" + total.toLocaleString("en-IN");
-
+      "₹" +
+      total.toLocaleString("en-IN");
   }
 }
 
-
-/* =========================
-   CHANGE QUANTITY
-========================= */
 
 function changeQty(id, change) {
 
@@ -510,24 +529,6 @@ function changeQty(id, change) {
 
   if (!item) return;
 
-  if (change > 0) {
-
-    const product =
-      allProducts.find(
-        p => Number(p.id) === Number(id)
-      );
-
-    if (
-      product &&
-      item.quantity >= Number(product.stock || 0)
-    ) {
-
-      alert("Available stock itna hi hai.");
-
-      return;
-    }
-  }
-
   item.quantity += change;
 
   if (item.quantity <= 0) {
@@ -536,7 +537,6 @@ function changeQty(id, change) {
       cart.filter(
         x => Number(x.id) !== Number(id)
       );
-
   }
 
   saveCart();
@@ -544,10 +544,6 @@ function changeQty(id, change) {
   renderCart();
 }
 
-
-/* =========================
-   REMOVE
-========================= */
 
 function removeFromCart(id) {
 
@@ -571,7 +567,6 @@ function startCheckout() {
   if (!cart.length) {
 
     alert("Cart empty hai.");
-
     return;
   }
 
@@ -584,10 +579,6 @@ function startCheckout() {
     ?.classList.add("show");
 }
 
-
-/* =========================
-   CHECKOUT SUMMARY
-========================= */
 
 function renderCheckoutSummary() {
 
@@ -607,15 +598,14 @@ function renderCheckoutSummary() {
 
       total += t;
 
-      const img =
-        item.image_url ||
-        "https://placehold.co/100x100?text=BUYZO";
-
       return `
         <div class="summaryItem">
 
           <img
-            src="${escapeAttr(img)}"
+            src="${escapeAttr(
+              item.image_url ||
+              "https://placehold.co/100x100?text=BUYZO"
+            )}"
           >
 
           <div>
@@ -628,4 +618,442 @@ function renderCheckoutSummary() {
 
             ${item.quantity}
             ×
-            ₹${Number(item.price
+            ₹${Number(item.price)
+              .toLocaleString("en-IN")}
+
+          </div>
+
+          <strong>
+            ₹${t.toLocaleString("en-IN")}
+          </strong>
+
+        </div>
+      `;
+
+    }).join("");
+
+  document
+    .getElementById("checkoutSubtotal")
+    .textContent =
+    "₹" + total.toLocaleString("en-IN");
+
+  document
+    .getElementById("checkoutTotal")
+    .textContent =
+    "₹" + total.toLocaleString("en-IN");
+}
+
+
+/* =========================
+   PLACE ORDER
+========================= */
+
+function placeOrder(e) {
+
+  e.preventDefault();
+
+  const name =
+    document.getElementById("coName")
+      .value.trim();
+
+  const mobile =
+    document.getElementById("coMobile")
+      .value.trim();
+
+  const address =
+    document.getElementById("coAddress")
+      .value.trim();
+
+  const city =
+    document.getElementById("coCity")
+      .value.trim();
+
+  const state =
+    document.getElementById("coState")
+      .value.trim();
+
+  const pincode =
+    document.getElementById("coPincode")
+      .value.trim();
+
+  if (!/^\d{10}$/.test(mobile)) {
+
+    alert(
+      "10 digit mobile number enter karo."
+    );
+
+    return;
+  }
+
+  if (!/^\d{6}$/.test(pincode)) {
+
+    alert(
+      "6 digit pincode enter karo."
+    );
+
+    return;
+  }
+
+  const total =
+    cart.reduce(
+      (sum, item) =>
+        sum +
+        Number(item.price) *
+        Number(item.quantity),
+      0
+    );
+
+  currentOrder = {
+
+    orderId:
+      "BZ" +
+      Date.now()
+        .toString()
+        .slice(-8),
+
+    name,
+    mobile,
+    address,
+    city,
+    state,
+    pincode,
+
+    payment:
+      "Cash on Delivery",
+
+    items:
+      JSON.parse(
+        JSON.stringify(cart)
+      ),
+
+    total
+  };
+
+  closeModal("checkoutModal");
+
+  document
+    .getElementById("successText")
+    .textContent =
+    `Order #${currentOrder.orderId} — Total ₹${total.toLocaleString("en-IN")}.`;
+
+  document
+    .getElementById("successModal")
+    ?.classList.add("show");
+}
+
+
+/* =========================
+   WHATSAPP
+========================= */
+
+function sendOrderWhatsApp() {
+
+  if (!currentOrder) return;
+
+  const o = currentOrder;
+
+  const items =
+    o.items
+      .map(
+        i =>
+          `• ${i.name} × ${i.quantity} = ₹${(
+            Number(i.price) *
+            Number(i.quantity)
+          ).toLocaleString("en-IN")}`
+      )
+      .join("\n");
+
+  const msg = `
+*BUYZO NEW ORDER* 📦
+
+*Order ID:* ${o.orderId}
+
+*Customer Details*
+Name: ${o.name}
+Mobile: ${o.mobile}
+
+*Delivery Address*
+${o.address}
+${o.city}, ${o.state}
+Pincode: ${o.pincode}
+
+*Payment:* ${o.payment}
+
+*Products*
+${items}
+
+*Total: ₹${o.total.toLocaleString("en-IN")}*
+`;
+
+  const url =
+    "https://wa.me/" +
+    WHATSAPP_NUMBER +
+    "?text=" +
+    encodeURIComponent(msg);
+
+  window.location.href = url;
+}
+
+
+/* =========================
+   FINISH
+========================= */
+
+function finishOrder() {
+
+  cart = [];
+
+  saveCart();
+
+  updateCartCount();
+
+  currentOrder = null;
+
+  closeModal("successModal");
+}
+
+
+/* =========================
+   ACCOUNT
+========================= */
+
+function openAccount() {
+
+  document
+    .getElementById("accountModal")
+    ?.classList.add("show");
+
+  loginForm();
+}
+
+
+function loginForm() {
+
+  const f =
+    document.getElementById(
+      "accountForm"
+    );
+
+  if (!f) return;
+
+  f.innerHTML = `
+    <input
+      id="accountEmail"
+      type="email"
+      placeholder="Email"
+      required
+    >
+
+    <input
+      id="accountPassword"
+      type="password"
+      placeholder="Password"
+      required
+    >
+
+    <button
+      type="button"
+      class="orange wide"
+      onclick="doLogin()"
+    >
+      Login
+    </button>
+  `;
+
+  setTab("login");
+}
+
+
+function signupForm() {
+
+  const f =
+    document.getElementById(
+      "accountForm"
+    );
+
+  if (!f) return;
+
+  f.innerHTML = `
+    <input
+      id="accountEmail"
+      type="email"
+      placeholder="Email"
+      required
+    >
+
+    <input
+      id="accountPassword"
+      type="password"
+      placeholder="Password (minimum 6 characters)"
+      required
+    >
+
+    <button
+      type="button"
+      class="orange wide"
+      onclick="doSignup()"
+    >
+      Create Account
+    </button>
+  `;
+
+  setTab("signup");
+}
+
+
+function setTab(type) {
+
+  document
+    .getElementById("loginTab")
+    ?.classList.toggle(
+      "selected",
+      type === "login"
+    );
+
+  document
+    .getElementById("signupTab")
+    ?.classList.toggle(
+      "selected",
+      type === "signup"
+    );
+}
+
+
+async function doLogin() {
+
+  const email =
+    document
+      .getElementById("accountEmail")
+      ?.value.trim();
+
+  const password =
+    document
+      .getElementById("accountPassword")
+      ?.value;
+
+  const msg =
+    document.getElementById(
+      "accountMsg"
+    );
+
+  const { error } =
+    await db.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if (error) {
+
+    if (msg)
+      msg.textContent =
+        error.message;
+
+    return;
+  }
+
+  if (msg)
+    msg.textContent =
+      "Login successful ✅";
+
+  setTimeout(
+    () =>
+      closeModal("accountModal"),
+    500
+  );
+}
+
+
+async function doSignup() {
+
+  const email =
+    document
+      .getElementById("accountEmail")
+      ?.value.trim();
+
+  const password =
+    document
+      .getElementById("accountPassword")
+      ?.value;
+
+  const msg =
+    document.getElementById(
+      "accountMsg"
+    );
+
+  if (!email || !password) {
+
+    if (msg)
+      msg.textContent =
+        "Email aur password required hai.";
+
+    return;
+  }
+
+  if (password.length < 6) {
+
+    if (msg)
+      msg.textContent =
+        "Password minimum 6 characters ka hona chahiye.";
+
+    return;
+  }
+
+  const { error } =
+    await db.auth.signUp({
+      email,
+      password
+    });
+
+  if (error) {
+
+    if (msg)
+      msg.textContent =
+        error.message;
+
+    return;
+  }
+
+  if (msg)
+    msg.textContent =
+      "Account created. Email verify karo.";
+}
+
+
+/* =========================
+   MODAL
+========================= */
+
+function closeModal(id) {
+
+  document
+    .getElementById(id)
+    ?.classList.remove("show");
+}
+
+
+/* =========================
+   SECURITY HELPERS
+========================= */
+
+function escapeHTML(value) {
+
+  return String(value ?? "")
+    .replace(
+      /[&<>"']/g,
+      c =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        })[c]
+    );
+}
+
+
+function escapeAttr(value) {
+
+  return escapeHTML(value)
+    .replace(/`/g, "&#096;");
+}
