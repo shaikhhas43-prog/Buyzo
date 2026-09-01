@@ -854,4 +854,239 @@ function viewOrder(id) {
 
     <div class="detailBox">
 
-      <
+      <h3>
+        📦 Order #${
+          escapeHTML(
+            order.order_no ||
+            String(order.id)
+          )
+        }
+      </h3>
+
+      <hr>
+
+      <h4>👤 Customer</h4>
+
+      <p>
+        <b>Name:</b>
+        ${escapeHTML(
+          order.customer_name || "-"
+        )}
+      </p>
+
+      <p>
+        <b>Mobile:</b>
+        ${escapeHTML(
+          order.mobile || "-"
+        )}
+      </p>
+
+      <p>
+        <b>Address:</b>
+        ${escapeHTML(
+          order.address || "-"
+        )}
+      </p>
+
+      <p>
+        <b>City:</b>
+        ${escapeHTML(
+          order.city || "-"
+        )}
+      </p>
+
+      <p>
+        <b>State:</b>
+        ${escapeHTML(
+          order.state || "-"
+        )}
+      </p>
+
+      <p>
+        <b>Pincode:</b>
+        ${escapeHTML(
+          order.pincode || "-"
+        )}
+      </p>
+
+      <hr>
+
+      <h4>💰 Payment</h4>
+
+      <p>
+        ${escapeHTML(
+          order.payment_method ||
+          "Cash on Delivery"
+        )}
+      </p>
+
+      <p>
+        <b>Total:</b>
+        ₹${Number(
+          order.total || 0
+        ).toLocaleString("en-IN")}
+      </p>
+
+      <hr>
+
+      <h4>📦 Status</h4>
+
+      <p>
+        ${escapeHTML(
+          order.status || "New"
+        )}
+      </p>
+
+    </div>
+  `;
+
+  modal.style.display =
+    "flex";
+}
+
+
+/* =========================
+   CLOSE ORDER MODAL
+========================= */
+
+function closeOrderModal() {
+
+  const modal =
+    document.getElementById(
+      "orderModal"
+    );
+
+  if (modal) {
+    modal.style.display =
+      "none";
+  }
+}
+
+
+/* =========================
+   UPDATE ORDER
+========================= */
+
+async function updateOrderStatus(
+  id,
+  status
+) {
+
+  if (!user) return;
+
+  const { error } =
+    await db
+      .from("orders")
+      .update({
+        status: status
+      })
+      .eq("id", id)
+      .eq("seller_id", user.id);
+
+  if (error) {
+
+    notice(
+      "Status update error: " +
+      error.message
+    );
+
+    return;
+  }
+
+  notice(
+    "✅ Order status updated: " +
+    status
+  );
+
+  await loadOrders();
+}
+
+
+/* =========================
+   NOTICE
+========================= */
+
+function notice(message) {
+
+  const element =
+    document.getElementById(
+      "notice"
+    );
+
+  if (element) {
+    element.textContent =
+      message;
+  }
+}
+
+
+/* =========================
+   DATE
+========================= */
+
+function formatDate(date) {
+
+  if (!date) return "";
+
+  try {
+
+    return new Date(date)
+      .toLocaleString("en-IN");
+
+  } catch {
+
+    return "";
+  }
+}
+
+
+/* =========================
+   STATUS CLASS
+========================= */
+
+function statusClass(status) {
+
+  return String(
+    status || "New"
+  )
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+}
+
+
+/* =========================
+   SECURITY
+========================= */
+
+function escapeHTML(value) {
+
+  return String(
+    value ?? ""
+  ).replace(
+    /[&<>"']/g,
+    char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[char])
+  );
+}
+
+
+function escapeAttr(value) {
+
+  return escapeHTML(value)
+    .replace(
+      /`/g,
+      "&#096;"
+    );
+}
+
+
+/* =========================
+   START
+========================= */
+
+init();
