@@ -13,9 +13,14 @@ let orders = [];
 ========================= */
 
 async function init() {
-  const s = await db.auth.getSession();
 
-  user = s.data.session?.user || null;
+  const { data, error } = await db.auth.getSession();
+
+  if (error) {
+    console.error(error);
+  }
+
+  user = data?.session?.user || null;
 
   const loginBox = document.getElementById("login");
   const app = document.getElementById("app");
@@ -29,7 +34,12 @@ async function init() {
   }
 
   if (user) {
-    document.getElementById("email").textContent = user.email || "";
+
+    const email = document.getElementById("email");
+
+    if (email) {
+      email.textContent = user.email || "";
+    }
 
     await load();
     await loadOrders();
@@ -49,10 +59,12 @@ async function load() {
     .from("products")
     .select("*")
     .eq("seller_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", {
+      ascending: false
+    });
 
   if (r.error) {
-    notice(r.error.message);
+    notice("Product error: " + r.error.message);
     return;
   }
 
@@ -73,10 +85,15 @@ function render() {
 
   if (!list) return;
 
-  list.innerHTML = products.map(p => {
+  const fallback =
+    "https://placehold.co/150x150/f0f1f6/171b35?text=BUYZO";
 
-    const fallback =
-      "https://placehold.co/150x150/f0f1f6/171b35?text=BUYZO";
+  if (!products.length) {
+    list.innerHTML = "<p>No products yet.</p>";
+    return;
+  }
+
+  list.innerHTML = products.map(p => {
 
     const img = p.image_url || fallback;
 
@@ -91,7 +108,9 @@ function render() {
 
         <div class="info">
 
-          <b>${escapeHTML(p.name)}</b>
+          <b>
+            ${escapeHTML(p.name)}
+          </b>
 
           <small>
             ${escapeHTML(p.category || "Other")}
@@ -111,7 +130,7 @@ function render() {
       </div>
     `;
 
-  }).join("") || "<p>No products yet.</p>";
+  }).join("");
 }
 
 
@@ -181,13 +200,15 @@ async function addProduct() {
     );
 
   if (up.error) {
-    notice("Photo upload error: " + up.error.message);
+    notice(
+      "Photo upload error: " +
+      up.error.message
+    );
     return;
   }
 
   const publicURL =
-    db
-      .storage
+    db.storage
       .from("product-images")
       .getPublicUrl(path)
       .data
@@ -196,15 +217,19 @@ async function addProduct() {
   const r = await db
     .from("products")
     .insert({
+
       name: name,
       category: category,
       price: price,
       old_price: old,
       stock: stock,
       emoji: emoji,
+
       image_url: publicURL,
       image_path: path,
+
       seller_id: user.id
+
     });
 
   if (r.error) {
@@ -214,7 +239,11 @@ async function addProduct() {
       .from("product-images")
       .remove([path]);
 
-    notice("Product save error: " + r.error.message);
+    notice(
+      "Product save error: " +
+      r.error.message
+    );
+
     return;
   }
 
@@ -229,7 +258,7 @@ async function addProduct() {
 
   document.getElementById("imagePreview").style.display = "none";
 
-  notice("✅ Product photo ke saath add ho gaya!");
+  notice("✅ Product successfully add ho gaya!");
 
   await load();
 }
@@ -248,11 +277,14 @@ function previewImage() {
     document.getElementById("imagePreview");
 
   if (!file) {
+
     img.style.display = "none";
+
     return;
   }
 
-  img.src = URL.createObjectURL(file);
+  img.src =
+    URL.createObjectURL(file);
 
   img.style.display = "block";
 }
@@ -277,10 +309,16 @@ async function del(id) {
     await db
       .from("products")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("seller_id", user.id);
 
   if (r.error) {
-    notice(r.error.message);
+
+    notice(
+      "Delete error: " +
+      r.error.message
+    );
+
     return;
   }
 
@@ -289,18 +327,19 @@ async function del(id) {
     await db
       .storage
       .from("product-images")
-      .remove([p.image_path]);
-
+      .remove([
+        p.image_path
+      ]);
   }
 
-  notice("Product deleted.");
+  notice("✅ Product deleted.");
 
   await load();
 }
 
 
 /* =========================
-   ORDERS
+   LOAD ORDERS
 ========================= */
 
 async function loadOrders() {
@@ -311,8 +350,10 @@ async function loadOrders() {
     document.getElementById("ordersList");
 
   if (box) {
-    box.innerHTML =
-      `<p>📦 Orders loading...</p>`;
+
+    box.innerHTML = `
+      <p>📦 Orders loading...</p>
+    `;
   }
 
   const r =
@@ -329,10 +370,18 @@ async function loadOrders() {
     console.error(r.error);
 
     if (box) {
+
       box.innerHTML = `
         <div class="emptyOrders">
-          <h3>Orders load nahi ho rahe.</h3>
-          <p>${escapeHTML(r.error.message)}</p>
+
+          <h3>
+            Orders load nahi ho rahe.
+          </h3>
+
+          <p>
+            ${escapeHTML(r.error.message)}
+          </p>
+
         </div>
       `;
     }
@@ -368,10 +417,15 @@ function renderOrders() {
 
     box.innerHTML = `
       <div class="emptyOrders">
-        <h3>📦 No orders yet</h3>
+
+        <h3>
+          📦 No orders yet
+        </h3>
+
         <p>
           Customer order karega to yahan dikhega.
         </p>
+
       </div>
     `;
 
@@ -385,14 +439,16 @@ function renderOrders() {
       order.status || "New";
 
     const total =
-      Number(order.total || 0);
+      Number(order.total || order.price || 0);
 
     return `
+
       <div class="orderCard">
 
         <div class="orderTop">
 
           <div>
+
             <h3>
               📦 Order #${escapeHTML(
                 order.order_no ||
@@ -403,9 +459,12 @@ function renderOrders() {
             <small>
               ${formatDate(order.created_at)}
             </small>
+
           </div>
 
-          <span class="orderStatus ${statusClass(status)}">
+          <span
+            class="orderStatus ${statusClass(status)}"
+          >
             ${escapeHTML(status)}
           </span>
 
@@ -414,36 +473,62 @@ function renderOrders() {
 
         <div class="orderCustomer">
 
-          <h4>👤 Customer</h4>
+          <h4>
+            👤 Customer
+          </h4>
 
           <p>
             <b>Name:</b>
-            ${escapeHTML(order.customer_name || "-")}
+            ${escapeHTML(
+              order.customer_name || "-"
+            )}
           </p>
 
           <p>
             <b>Mobile:</b>
-            ${escapeHTML(order.mobile || "-")}
+            ${escapeHTML(
+              order.mobile || "-"
+            )}
           </p>
 
           <p>
             <b>Address:</b>
-            ${escapeHTML(order.address || "-")}
+            ${escapeHTML(
+              order.address || "-"
+            )}
           </p>
 
           <p>
             <b>City:</b>
-            ${escapeHTML(order.city || "-")}
+            ${escapeHTML(
+              order.city || "-"
+            )}
           </p>
 
           <p>
             <b>State:</b>
-            ${escapeHTML(order.state || "-")}
+            ${escapeHTML(
+              order.state || "-"
+            )}
           </p>
 
           <p>
             <b>Pincode:</b>
-            ${escapeHTML(order.pincode || "-")}
+            ${escapeHTML(
+              order.pincode || "-"
+            )}
+          </p>
+
+          <p>
+            <b>Product:</b>
+            ${escapeHTML(
+              order.product_name || "-"
+            )}
+          </p>
+
+          <p>
+            <b>Quantity:</b>
+            ${Number(order.quantity || 1)}
           </p>
 
         </div>
@@ -475,8 +560,14 @@ function renderOrders() {
               View
             </button>
 
+
             <select
-              onchange="updateOrderStatus(${Number(order.id)}, this.value)"
+              onchange="
+                updateOrderStatus(
+                  ${Number(order.id)},
+                  this.value
+                )
+              "
             >
 
               <option
@@ -528,6 +619,7 @@ function renderOrders() {
         </div>
 
       </div>
+
     `;
 
   }).join("");
@@ -560,7 +652,7 @@ function viewOrder(id) {
     <div class="detailBox">
 
       <h3>
-        Order #${escapeHTML(
+        📦 Order #${escapeHTML(
           order.order_no ||
           String(order.id)
         )}
@@ -568,41 +660,74 @@ function viewOrder(id) {
 
       <hr>
 
-      <h4>👤 Customer</h4>
+      <h4>
+        👤 Customer
+      </h4>
 
       <p>
         <b>Name:</b>
-        ${escapeHTML(order.customer_name || "-")}
+        ${escapeHTML(
+          order.customer_name || "-"
+        )}
       </p>
 
       <p>
         <b>Mobile:</b>
-        ${escapeHTML(order.mobile || "-")}
+        ${escapeHTML(
+          order.mobile || "-"
+        )}
       </p>
 
       <p>
         <b>Address:</b>
-        ${escapeHTML(order.address || "-")}
+        ${escapeHTML(
+          order.address || "-"
+        )}
       </p>
 
       <p>
         <b>City:</b>
-        ${escapeHTML(order.city || "-")}
+        ${escapeHTML(
+          order.city || "-"
+        )}
       </p>
 
       <p>
         <b>State:</b>
-        ${escapeHTML(order.state || "-")}
+        ${escapeHTML(
+          order.state || "-"
+        )}
       </p>
 
       <p>
         <b>Pincode:</b>
-        ${escapeHTML(order.pincode || "-")}
+        ${escapeHTML(
+          order.pincode || "-"
+        )}
       </p>
 
       <hr>
 
-      <h4>💰 Payment</h4>
+      <h4>
+        🛍️ Product
+      </h4>
+
+      <p>
+        ${escapeHTML(
+          order.product_name || "-"
+        )}
+      </p>
+
+      <p>
+        <b>Quantity:</b>
+        ${Number(order.quantity || 1)}
+      </p>
+
+      <hr>
+
+      <h4>
+        💰 Payment
+      </h4>
 
       <p>
         ${escapeHTML(
@@ -614,16 +739,20 @@ function viewOrder(id) {
       <p>
         <b>Total:</b>
         ₹${Number(
-          order.total || 0
+          order.total || order.price || 0
         ).toLocaleString("en-IN")}
       </p>
 
       <hr>
 
-      <h4>📦 Status</h4>
+      <h4>
+        📦 Status
+      </h4>
 
       <p>
-        ${escapeHTML(order.status || "New")}
+        ${escapeHTML(
+          order.status || "New"
+        )}
       </p>
 
     </div>
@@ -635,7 +764,7 @@ function viewOrder(id) {
 
 
 /* =========================
-   CLOSE ORDER
+   CLOSE MODAL
 ========================= */
 
 function closeOrderModal() {
@@ -669,7 +798,7 @@ async function updateOrderStatus(id, status) {
   if (r.error) {
 
     notice(
-      "Status update error: " +
+      "❌ Status update error: " +
       r.error.message
     );
 
@@ -691,77 +820,15 @@ async function updateOrderStatus(id, status) {
 
 async function login() {
 
-  const email = document
-    .getElementById("le")
-    .value
-    .trim();
-
-  const password = document
-    .getElementById("lp")
-    .value;
-
-  const msg = document.getElementById("loginMsg");
-
-  if (!email || !password) {
-    msg.textContent = "Email aur password enter karo.";
-    return;
-  }
-
-  msg.textContent = "Login ho raha hai...";
-
-  try {
-
-    const { data, error } =
-      await db.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-
-    if (error) {
-      console.error("LOGIN ERROR:", error);
-
-      msg.textContent =
-        "❌ " + error.message;
-
-      return;
-    }
-
-    if (!data.session) {
-      msg.textContent =
-        "❌ Login session nahi bana.";
-      return;
-    }
-
-    user = data.user;
-
-    msg.textContent =
-      "✅ Login successful!";
-
-    document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
-
-    document.getElementById("email").textContent =
-      user.email || "";
-
-    await load();
-    await loadOrders();
-
-  } catch (err) {
-
-    console.error(err);
-
-    msg.textContent =
-      "❌ " + (err.message || "Login failed");
-
-  }
-}
   const email =
-    document.getElementById("le")
+    document
+      .getElementById("le")
       .value
       .trim();
 
   const password =
-    document.getElementById("lp")
+    document
+      .getElementById("lp")
       .value;
 
   const msg =
@@ -775,24 +842,77 @@ async function login() {
     return;
   }
 
-  const r =
-    await db.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+  msg.textContent =
+    "Login ho raha hai...";
 
-  if (r.error) {
+  try {
+
+    const { data, error } =
+      await db.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+    if (error) {
+
+      console.error(
+        "LOGIN ERROR:",
+        error
+      );
+
+      msg.textContent =
+        "❌ " + error.message;
+
+      return;
+    }
+
+    if (!data?.session) {
+
+      msg.textContent =
+        "❌ Login session nahi bana.";
+
+      return;
+    }
+
+    user = data.user;
 
     msg.textContent =
-      r.error.message;
+      "✅ Login successful!";
 
-    return;
+    const loginBox =
+      document.getElementById("login");
+
+    const app =
+      document.getElementById("app");
+
+    if (loginBox) {
+      loginBox.style.display = "none";
+    }
+
+    if (app) {
+      app.style.display = "block";
+    }
+
+    const emailBox =
+      document.getElementById("email");
+
+    if (emailBox) {
+      emailBox.textContent =
+        user.email || "";
+    }
+
+    await load();
+    await loadOrders();
+
+  } catch (err) {
+
+    console.error(err);
+
+    msg.textContent =
+      "❌ " +
+      (err.message || "Login failed");
+
   }
-
-  msg.textContent =
-    "Login successful ✅";
-
-  await init();
 }
 
 
@@ -805,6 +925,8 @@ async function logout() {
   await db.auth.signOut();
 
   user = null;
+  products = [];
+  orders = [];
 
   await init();
 }
@@ -814,13 +936,13 @@ async function logout() {
    NOTICE
 ========================= */
 
-function notice(t) {
+function notice(text) {
 
   const e =
     document.getElementById("notice");
 
   if (e) {
-    e.textContent = t;
+    e.textContent = text;
   }
 }
 
@@ -862,26 +984,33 @@ function statusClass(status) {
    SECURITY
 ========================= */
 
-function escapeHTML(v) {
+function escapeHTML(value) {
 
-  return String(v ?? "")
+  return String(value ?? "")
     .replace(
       /[&<>"']/g,
-      c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      }[c])
+      function(char) {
+
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        }[char];
+
+      }
     );
 }
 
 
-function escapeAttr(v) {
+function escapeAttr(value) {
 
-  return escapeHTML(v)
-    .replace(/`/g, "&#096;");
+  return escapeHTML(value)
+    .replace(
+      /`/g,
+      "&#096;"
+    );
 }
 
 
