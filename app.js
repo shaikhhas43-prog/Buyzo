@@ -9,9 +9,7 @@ const db = window.supabase.createClient(
 
 let allProducts = [];
 let filteredProducts = [];
-let cart = JSON.parse(
-  localStorage.getItem("buyzo_cart") || "[]"
-);
+let cart = JSON.parse(localStorage.getItem("buyzo_cart") || "[]");
 let currentOrder = null;
 
 
@@ -24,25 +22,31 @@ document.addEventListener("DOMContentLoaded", () => {
   loadProducts();
   updateCartCount();
 
-  document
-    .getElementById("search")
-    ?.addEventListener("keydown", e => {
+  const search = document.getElementById("search");
+
+  if (search) {
+    search.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         searchProducts();
       }
     });
+  }
 
-  document
-    .getElementById("checkoutForm")
-    ?.addEventListener("submit", placeOrder);
+  const checkoutForm = document.getElementById("checkoutForm");
+
+  if (checkoutForm) {
+    checkoutForm.addEventListener("submit", placeOrder);
+  }
+
 });
 
 
 /* =========================
-   PRODUCTS
+   LOAD PRODUCTS
 ========================= */
 
 async function loadProducts() {
+
   const grid = document.getElementById("productGrid");
 
   if (!grid) return;
@@ -53,127 +57,101 @@ async function loadProducts() {
     </div>
   `;
 
-  try {
-    const { data, error } = await db
-      .from("products")
-      .select("*");
+  const { data, error } = await db
+    .from("products")
+    .select(`
+      id,
+      name,
+      category,
+      price,
+      old_price,
+      stock,
+      emoji,
+      image_url,
+      seller_id,
+      created_at
+    `)
+    .order("created_at", {
+      ascending: false
+    });
 
-    if (error) {
-      console.error("SUPABASE ERROR:", error);
+  if (error) {
 
-      grid.innerHTML = `
-        <div class="empty">
-          <h3>Products load nahi ho rahe ❌</h3>
-          <p>${escapeHTML(error.message)}</p>
-        </div>
-      `;
-
-      return;
-    }
-
-    console.log("BUYZO PRODUCTS:", data);
-
-    allProducts = data || [];
-    filteredProducts = [...allProducts];
-
-    renderProducts();
-
-  } catch (err) {
-
-    console.error("LOAD ERROR:", err);
+    console.error("Supabase error:", error);
 
     grid.innerHTML = `
       <div class="empty">
-        <h3>Something went wrong ❌</h3>
-        <p>${escapeHTML(err.message)}</p>
+        <h3>Products load nahi ho rahe.</h3>
+        <p>${escapeHTML(error.message)}</p>
       </div>
     `;
+
+    return;
   }
-}
-  const grid = document.getElementById("productGrid");
 
-  if (!grid) return;
+  allProducts = data || [];
 
-  grid.innerHTML = `
-    <div class="loading">
-      Loading BUYZO products...
-    </div>
-  `;
+  filteredProducts = [...allProducts];
 
-  try {
-
-    const { data, error } = await db
-      .from("products")
-      .select(`
-        id,
-        name,
-        category,
-        price,
-        old_price,
-        stock,
-        emoji,
-        image_url,
-        seller_id,
-        created_at
-      `)
-      .order("created_at", {
-        ascending: false
-      });
-
-    if (error) {
-
-      console.error("PRODUCT ERROR:", error);
-
-      grid.innerHTML = `
-        <div class="empty">
-          <h3>Products load nahi ho rahe ❌</h3>
-
-          <p>
-            ${escapeHTML(error.message)}
-          </p>
-
-          <button
-            class="orange"
-            onclick="loadProducts()"
-          >
-            Try Again
-          </button>
-        </div>
-      `;
-
-      return;
-    }
-
-    console.log("PRODUCTS:", data);
-
-    allProducts = data || [];
-    filteredProducts = [...allProducts];
-
-    renderProducts();
-
-  } catch (err) {
-
-    console.error(err);
-
-    grid.innerHTML = `
-      <div class="empty">
-        <h3>Something went wrong ❌</h3>
-
-        <p>
-          ${escapeHTML(err.message)}
-        </p>
-
-        <button
-          class="orange"
-          onclick="loadProducts()"
-        >
-          Try Again
-        </button>
-      </div>
-    `;
-  }
+  renderProducts();
 }
 
+
+/* =========================
+   CATEGORY FALLBACK
+========================= */
+
+function getCategoryImage(category) {
+
+  const c = String(category || "").toLowerCase();
+
+  if (c.includes("mobile")) {
+    return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800";
+  }
+
+  if (c.includes("fashion")) {
+    return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800";
+  }
+
+  if (c.includes("electronics")) {
+    return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
+  }
+
+  if (c.includes("home")) {
+    return "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800";
+  }
+
+  if (c.includes("beauty")) {
+    return "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800";
+  }
+
+  if (c.includes("sports")) {
+    return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800";
+  }
+
+  return "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
+}
+
+
+/* =========================
+   PRODUCT IMAGE
+========================= */
+
+function getProductImage(p) {
+
+  const image = String(p.image_url || "").trim();
+
+  if (image) {
+    return image;
+  }
+
+  return getCategoryImage(p.category);
+}
+
+
+/* =========================
+   RENDER PRODUCTS
+========================= */
 
 function renderProducts() {
 
@@ -186,49 +164,34 @@ function renderProducts() {
     grid.innerHTML = `
       <div class="empty">
         <h3>No products found</h3>
-
-        <p>
-          Supabase me product nahi mila.
-        </p>
-
-        <button
-          class="orange"
-          onclick="loadProducts()"
-        >
-          Refresh Products
-        </button>
+        <p>Abhi is category me product available nahi hai.</p>
       </div>
     `;
 
     return;
   }
 
-  grid.innerHTML =
-    filteredProducts
-      .map(createProductCard)
-      .join("");
+  grid.innerHTML = filteredProducts
+    .map(createProductCard)
+    .join("");
 }
 
+
+/* =========================
+   PRODUCT CARD
+========================= */
 
 function createProductCard(p) {
 
   const price = Number(p.price || 0);
   const old = Number(p.old_price || 0);
-  const stock = Number(p.stock ?? 0);
+  const stock = Number(p.stock || 0);
 
-  const img =
-    (p.image_url || "").trim();
-
-  const fallback =
-    `https://placehold.co/700x700/f0f1f6/171b35?text=${encodeURIComponent(
-      p.emoji || "BUYZO"
-    )}`;
+  const image = getProductImage(p);
 
   const discount =
     old > price
-      ? Math.round(
-          ((old - price) / old) * 100
-        )
+      ? Math.round(((old - price) / old) * 100)
       : 0;
 
   return `
@@ -238,17 +201,15 @@ function createProductCard(p) {
 
         ${
           discount
-            ? `<span class="discount">
-                ${discount}% OFF
-              </span>`
+            ? `<span class="discount">${discount}% OFF</span>`
             : ""
         }
 
         <img
-          src="${escapeAttr(img || fallback)}"
+          src="${escapeAttr(image)}"
           alt="${escapeHTML(p.name)}"
           loading="lazy"
-          onerror="this.onerror=null;this.src='${fallback}'"
+          onerror="this.onerror=null;this.src='${getCategoryImage(p.category)}';"
         >
 
       </div>
@@ -271,9 +232,7 @@ function createProductCard(p) {
 
           ${
             old > price
-              ? `<del>
-                  ₹${old.toLocaleString("en-IN")}
-                </del>`
+              ? `<del>₹${old.toLocaleString("en-IN")}</del>`
               : ""
           }
 
@@ -311,20 +270,26 @@ function createProductCard(p) {
 
 
 /* =========================
-   FILTER
+   CATEGORY FILTER
 ========================= */
 
 function filterCat(category) {
 
-  filteredProducts =
-    category === "All"
-      ? [...allProducts]
-      : allProducts.filter(
-          p =>
-            String(p.category || "")
-              .toLowerCase() ===
-            category.toLowerCase()
-        );
+  if (category === "All") {
+
+    filteredProducts = [...allProducts];
+
+  } else {
+
+    filteredProducts = allProducts.filter(p =>
+
+      String(p.category || "")
+        .toLowerCase()
+        .trim() === category.toLowerCase().trim()
+
+    );
+
+  }
 
   renderProducts();
 
@@ -336,28 +301,40 @@ function filterCat(category) {
 }
 
 
+/* =========================
+   SEARCH
+========================= */
+
 function searchProducts() {
 
+  const input =
+    document.getElementById("search");
+
   const q =
-    document
-      .getElementById("search")
-      ?.value
-      .trim()
-      .toLowerCase() || "";
+    input?.value.trim().toLowerCase() || "";
 
-  filteredProducts =
-    !q
-      ? [...allProducts]
-      : allProducts.filter(
-          p =>
-            String(p.name || "")
-              .toLowerCase()
-              .includes(q) ||
+  if (!q) {
 
-            String(p.category || "")
-              .toLowerCase()
-              .includes(q)
-        );
+    filteredProducts = [...allProducts];
+
+  } else {
+
+    filteredProducts = allProducts.filter(p => {
+
+      const name =
+        String(p.name || "").toLowerCase();
+
+      const category =
+        String(p.category || "").toLowerCase();
+
+      return (
+        name.includes(q) ||
+        category.includes(q)
+      );
+
+    });
+
+  }
 
   renderProducts();
 
@@ -375,67 +352,85 @@ function searchProducts() {
 
 function addToCart(id) {
 
-  const p =
+  const product =
     allProducts.find(
-      x => Number(x.id) === Number(id)
+      p => Number(p.id) === Number(id)
     );
 
-  if (!p) return;
+  if (!product) return;
 
   const stock =
-    Number(p.stock || 0);
+    Number(product.stock || 0);
 
   if (stock <= 0) {
+
     alert("Ye product out of stock hai.");
+
     return;
   }
 
-  const item =
+  const existing =
     cart.find(
-      x => Number(x.id) === Number(id)
+      item => Number(item.id) === Number(id)
     );
 
-  if (item) {
+  if (existing) {
 
-    if (item.quantity >= stock) {
-      alert("Available stock itna hi hai.");
+    if (existing.quantity >= stock) {
+
+      alert(
+        "Available stock itna hi hai."
+      );
+
       return;
     }
 
-    item.quantity++;
+    existing.quantity++;
 
   } else {
 
     cart.push({
-      id: p.id,
-      name: p.name,
-      price: Number(p.price || 0),
-      image_url: p.image_url || "",
+      id: product.id,
+      name: product.name,
+      price: Number(product.price || 0),
+      image_url: product.image_url || "",
       quantity: 1
     });
+
   }
 
   saveCart();
   updateCartCount();
   renderCart();
+
 }
 
 
+/* =========================
+   CART COUNT
+========================= */
+
 function updateCartCount() {
 
-  const e =
+  const element =
     document.getElementById("cartCount");
 
-  if (!e) return;
+  if (!element) return;
 
-  e.textContent =
+  const count =
     cart.reduce(
       (sum, item) =>
         sum + Number(item.quantity || 0),
       0
     );
+
+  element.textContent = count;
 }
 
+
+/* =========================
+   SAVE CART
+========================= */
 
 function saveCart() {
 
@@ -445,6 +440,10 @@ function saveCart() {
   );
 }
 
+
+/* =========================
+   OPEN CART
+========================= */
 
 function openCart() {
 
@@ -456,12 +455,16 @@ function openCart() {
 }
 
 
+/* =========================
+   RENDER CART
+========================= */
+
 function renderCart() {
 
   const box =
     document.getElementById("cartItems");
 
-  const totalEl =
+  const totalElement =
     document.getElementById("cartTotal");
 
   if (!box) return;
@@ -470,101 +473,96 @@ function renderCart() {
 
     box.innerHTML = `
       <div class="empty">
-
-        <h3>
-          Your cart is empty 🛒
-        </h3>
-
-        <p>
-          Products add karo.
-        </p>
-
+        <h3>Your cart is empty 🛒</h3>
       </div>
     `;
 
-    if (totalEl)
-      totalEl.textContent = "₹0";
+    if (totalElement) {
+      totalElement.textContent = "₹0";
+    }
 
     return;
   }
 
   let total = 0;
 
-  box.innerHTML =
-    cart.map(item => {
+  box.innerHTML = cart.map(item => {
 
-      const t =
-        Number(item.price) *
-        Number(item.quantity);
+    const itemTotal =
+      Number(item.price) *
+      Number(item.quantity);
 
-      total += t;
+    total += itemTotal;
 
-      const fallback =
-        "https://placehold.co/100x100/f0f1f6/171b35?text=BUYZO";
+    const image =
+      item.image_url ||
+      getCategoryImage("Fashion");
 
-      return `
-        <div class="cartItem">
+    return `
+      <div class="cartItem">
 
-          <img
-            src="${escapeAttr(
-              item.image_url || fallback
-            )}"
-            onerror="this.src='${fallback}'"
-          >
+        <img
+          src="${escapeAttr(image)}"
+          onerror="this.onerror=null;this.src='${getCategoryImage("Fashion")}'"
+        >
 
-          <div>
+        <div>
 
-            <b>
-              ${escapeHTML(item.name)}
-            </b>
+          <b>
+            ${escapeHTML(item.name)}
+          </b>
 
-            <p>
-              ₹${Number(item.price)
-                .toLocaleString("en-IN")}
-            </p>
+          <p>
+            ₹${Number(item.price).toLocaleString("en-IN")}
+          </p>
 
-            <div class="quantity">
+          <div class="quantity">
 
-              <button
-                onclick="changeQty(${Number(item.id)},-1)"
-              >
-                −
-              </button>
+            <button
+              onclick="changeQty(${Number(item.id)},-1)"
+            >
+              −
+            </button>
 
-              <span>
-                ${item.quantity}
-              </span>
+            <span>
+              ${item.quantity}
+            </span>
 
-              <button
-                onclick="changeQty(${Number(item.id)},1)"
-              >
-                +
-              </button>
-
-            </div>
+            <button
+              onclick="changeQty(${Number(item.id)},1)"
+            >
+              +
+            </button>
 
           </div>
 
-          <button
-            class="remove"
-            onclick="removeFromCart(${Number(item.id)})"
-          >
-            ×
-          </button>
-
         </div>
-      `;
 
-    }).join("");
+        <button
+          class="remove"
+          onclick="removeFromCart(${Number(item.id)})"
+        >
+          ×
+        </button>
 
-  if (totalEl) {
+      </div>
+    `;
 
-    totalEl.textContent =
-      "₹" +
-      total.toLocaleString("en-IN");
+  }).join("");
+
+  if (totalElement) {
+
+    totalElement.textContent =
+      "₹" + total.toLocaleString("en-IN");
+
   }
+
 }
 
+
+/* =========================
+   QUANTITY
+========================= */
 
 function changeQty(id, change) {
 
@@ -579,10 +577,10 @@ function changeQty(id, change) {
 
   if (item.quantity <= 0) {
 
-    cart =
-      cart.filter(
-        x => Number(x.id) !== Number(id)
-      );
+    cart = cart.filter(
+      x => Number(x.id) !== Number(id)
+    );
+
   }
 
   saveCart();
@@ -590,6 +588,10 @@ function changeQty(id, change) {
   renderCart();
 }
 
+
+/* =========================
+   REMOVE
+========================= */
 
 function removeFromCart(id) {
 
@@ -613,6 +615,7 @@ function startCheckout() {
   if (!cart.length) {
 
     alert("Cart empty hai.");
+
     return;
   }
 
@@ -626,6 +629,10 @@ function startCheckout() {
 }
 
 
+/* =========================
+   CHECKOUT SUMMARY
+========================= */
+
 function renderCheckoutSummary() {
 
   const box =
@@ -635,57 +642,54 @@ function renderCheckoutSummary() {
 
   let total = 0;
 
-  box.innerHTML =
-    cart.map(item => {
+  box.innerHTML = cart.map(item => {
 
-      const t =
-        Number(item.price) *
-        Number(item.quantity);
+    const itemTotal =
+      Number(item.price) *
+      Number(item.quantity);
 
-      total += t;
+    total += itemTotal;
 
-      return `
-        <div class="summaryItem">
+    return `
+      <div class="summaryItem">
 
-          <img
-            src="${escapeAttr(
-              item.image_url ||
-              "https://placehold.co/100x100?text=BUYZO"
-            )}"
-          >
+        <img
+          src="${escapeAttr(
+            item.image_url ||
+            getCategoryImage("Fashion")
+          )}"
+        >
 
-          <div>
+        <div>
 
-            <b>
-              ${escapeHTML(item.name)}
-            </b>
+          <b>
+            ${escapeHTML(item.name)}
+          </b>
 
-            <br>
+          <br>
 
-            ${item.quantity}
-            ×
-            ₹${Number(item.price)
-              .toLocaleString("en-IN")}
-
-          </div>
-
-          <strong>
-            ₹${t.toLocaleString("en-IN")}
-          </strong>
+          ${item.quantity}
+          × ₹${Number(item.price).toLocaleString("en-IN")}
 
         </div>
-      `;
 
-    }).join("");
+        <strong>
+          ₹${itemTotal.toLocaleString("en-IN")}
+        </strong>
 
-  document
-    .getElementById("checkoutSubtotal")
-    .textContent =
+      </div>
+    `;
+
+  }).join("");
+
+  document.getElementById(
+    "checkoutSubtotal"
+  ).textContent =
     "₹" + total.toLocaleString("en-IN");
 
-  document
-    .getElementById("checkoutTotal")
-    .textContent =
+  document.getElementById(
+    "checkoutTotal"
+  ).textContent =
     "₹" + total.toLocaleString("en-IN");
 }
 
@@ -722,6 +726,7 @@ function placeOrder(e) {
     document.getElementById("coPincode")
       .value.trim();
 
+
   if (!/^\d{10}$/.test(mobile)) {
 
     alert(
@@ -730,6 +735,7 @@ function placeOrder(e) {
 
     return;
   }
+
 
   if (!/^\d{6}$/.test(pincode)) {
 
@@ -740,6 +746,7 @@ function placeOrder(e) {
     return;
   }
 
+
   const total =
     cart.reduce(
       (sum, item) =>
@@ -748,6 +755,7 @@ function placeOrder(e) {
         Number(item.quantity),
       0
     );
+
 
   currentOrder = {
 
@@ -773,14 +781,25 @@ function placeOrder(e) {
       ),
 
     total
+
   };
+
 
   closeModal("checkoutModal");
 
-  document
-    .getElementById("successText")
-    .textContent =
-    `Order #${currentOrder.orderId} — Total ₹${total.toLocaleString("en-IN")}.`;
+
+  const successText =
+    document.getElementById(
+      "successText"
+    );
+
+  if (successText) {
+
+    successText.textContent =
+      `Order #${currentOrder.orderId} — Total ₹${total.toLocaleString("en-IN")}.`;
+
+  }
+
 
   document
     .getElementById("successModal")
@@ -789,60 +808,59 @@ function placeOrder(e) {
 
 
 /* =========================
-   WHATSAPP
+   WHATSAPP ORDER
 ========================= */
 
 function sendOrderWhatsApp() {
 
   if (!currentOrder) return;
 
-  const o = currentOrder;
+  const order = currentOrder;
+
 
   const items =
-    o.items
-      .map(
-        i =>
-          `• ${i.name} × ${i.quantity} = ₹${(
-            Number(i.price) *
-            Number(i.quantity)
-          ).toLocaleString("en-IN")}`
-      )
-      .join("\n");
+    order.items.map(item =>
 
-  const msg = `
-*BUYZO NEW ORDER* 📦
+      `• ${item.name} × ${item.quantity} = ₹${(
+        Number(item.price) *
+        Number(item.quantity)
+      ).toLocaleString("en-IN")}`
 
-*Order ID:* ${o.orderId}
+    ).join("\n");
+
+
+  const message =
+`*BUYZO NEW ORDER 📦*
+
+Order ID: ${order.orderId}
 
 *Customer Details*
-Name: ${o.name}
-Mobile: ${o.mobile}
+Name: ${order.name}
+Mobile: ${order.mobile}
 
 *Delivery Address*
-${o.address}
-${o.city}, ${o.state}
-Pincode: ${o.pincode}
+${order.address}
+${order.city}, ${order.state}
+Pincode: ${order.pincode}
 
-*Payment:* ${o.payment}
+*Payment:* Cash on Delivery
 
 *Products*
 ${items}
 
-*Total: ₹${o.total.toLocaleString("en-IN")}*
-`;
+*Total: ₹${order.total.toLocaleString("en-IN")}*`;
 
-  const url =
+
+  window.location.href =
     "https://wa.me/" +
     WHATSAPP_NUMBER +
     "?text=" +
-    encodeURIComponent(msg);
-
-  window.location.href = url;
+    encodeURIComponent(message);
 }
 
 
 /* =========================
-   FINISH
+   FINISH ORDER
 ========================= */
 
 function finishOrder() {
@@ -875,26 +893,26 @@ function openAccount() {
 
 function loginForm() {
 
-  const f =
+  const form =
     document.getElementById(
       "accountForm"
     );
 
-  if (!f) return;
+  if (!form) return;
 
-  f.innerHTML = `
+
+  form.innerHTML = `
+
     <input
       id="accountEmail"
       type="email"
       placeholder="Email"
-      required
     >
 
     <input
       id="accountPassword"
       type="password"
       placeholder="Password"
-      required
     >
 
     <button
@@ -904,7 +922,9 @@ function loginForm() {
     >
       Login
     </button>
+
   `;
+
 
   setTab("login");
 }
@@ -912,26 +932,26 @@ function loginForm() {
 
 function signupForm() {
 
-  const f =
+  const form =
     document.getElementById(
       "accountForm"
     );
 
-  if (!f) return;
+  if (!form) return;
 
-  f.innerHTML = `
+
+  form.innerHTML = `
+
     <input
       id="accountEmail"
       type="email"
       placeholder="Email"
-      required
     >
 
     <input
       id="accountPassword"
       type="password"
       placeholder="Password (minimum 6 characters)"
-      required
     >
 
     <button
@@ -941,29 +961,35 @@ function signupForm() {
     >
       Create Account
     </button>
+
   `;
+
 
   setTab("signup");
 }
 
 
-function setTab(type) {
+function setTab(tab) {
 
   document
     .getElementById("loginTab")
     ?.classList.toggle(
       "selected",
-      type === "login"
+      tab === "login"
     );
 
   document
     .getElementById("signupTab")
     ?.classList.toggle(
       "selected",
-      type === "signup"
+      tab === "signup"
     );
 }
 
+
+/* =========================
+   LOGIN
+========================= */
 
 async function doLogin() {
 
@@ -977,10 +1003,12 @@ async function doLogin() {
       .getElementById("accountPassword")
       ?.value;
 
+
   const msg =
     document.getElementById(
       "accountMsg"
     );
+
 
   const { error } =
     await db.auth.signInWithPassword({
@@ -988,26 +1016,37 @@ async function doLogin() {
       password
     });
 
+
   if (error) {
 
-    if (msg)
+    if (msg) {
       msg.textContent =
         error.message;
+    }
 
     return;
   }
 
-  if (msg)
+
+  if (msg) {
+
     msg.textContent =
       "Login successful ✅";
 
-  setTimeout(
-    () =>
-      closeModal("accountModal"),
-    500
-  );
+  }
+
+
+  setTimeout(() => {
+
+    closeModal("accountModal");
+
+  }, 500);
 }
 
+
+/* =========================
+   SIGN UP
+========================= */
 
 async function doSignup() {
 
@@ -1021,28 +1060,34 @@ async function doSignup() {
       .getElementById("accountPassword")
       ?.value;
 
+
   const msg =
     document.getElementById(
       "accountMsg"
     );
 
+
   if (!email || !password) {
 
-    if (msg)
+    if (msg) {
       msg.textContent =
         "Email aur password required hai.";
+    }
 
     return;
   }
+
 
   if (password.length < 6) {
 
-    if (msg)
+    if (msg) {
       msg.textContent =
         "Password minimum 6 characters ka hona chahiye.";
+    }
 
     return;
   }
+
 
   const { error } =
     await db.auth.signUp({
@@ -1050,23 +1095,29 @@ async function doSignup() {
       password
     });
 
+
   if (error) {
 
-    if (msg)
+    if (msg) {
       msg.textContent =
         error.message;
+    }
 
     return;
   }
 
-  if (msg)
+
+  if (msg) {
+
     msg.textContent =
       "Account created. Email verify karo.";
+
+  }
 }
 
 
 /* =========================
-   MODAL
+   CLOSE MODAL
 ========================= */
 
 function closeModal(id) {
@@ -1078,7 +1129,7 @@ function closeModal(id) {
 
 
 /* =========================
-   SECURITY HELPERS
+   SECURITY
 ========================= */
 
 function escapeHTML(value) {
@@ -1086,14 +1137,17 @@ function escapeHTML(value) {
   return String(value ?? "")
     .replace(
       /[&<>"']/g,
-      c =>
-        ({
+      function (char) {
+
+        return {
           "&": "&amp;",
           "<": "&lt;",
           ">": "&gt;",
           '"': "&quot;",
           "'": "&#039;"
-        })[c]
+        }[char];
+
+      }
     );
 }
 
