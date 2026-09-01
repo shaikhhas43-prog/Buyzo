@@ -43,7 +43,53 @@ document.addEventListener("DOMContentLoaded", () => {
 ========================= */
 
 async function loadProducts() {
+  const grid = document.getElementById("productGrid");
 
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <div class="loading">
+      Loading BUYZO products...
+    </div>
+  `;
+
+  try {
+    const { data, error } = await db
+      .from("products")
+      .select("*");
+
+    if (error) {
+      console.error("SUPABASE ERROR:", error);
+
+      grid.innerHTML = `
+        <div class="empty">
+          <h3>Products load nahi ho rahe ❌</h3>
+          <p>${escapeHTML(error.message)}</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    console.log("BUYZO PRODUCTS:", data);
+
+    allProducts = data || [];
+    filteredProducts = [...allProducts];
+
+    renderProducts();
+
+  } catch (err) {
+
+    console.error("LOAD ERROR:", err);
+
+    grid.innerHTML = `
+      <div class="empty">
+        <h3>Something went wrong ❌</h3>
+        <p>${escapeHTML(err.message)}</p>
+      </div>
+    `;
+  }
+}
   const grid = document.getElementById("productGrid");
 
   if (!grid) return;
