@@ -3,25 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>BUYZO Seller Panel</title>
+
 <link rel="stylesheet" href="./seller.css">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
 
 <header class="top">
+
   <a href="./index.html" class="logo">
-    BUY<span>ZO</span> <small>SELLER</small>
+    BUY<span>ZO</span>
+    <small>SELLER</small>
   </a>
 
   <div class="account">
+
     <span id="email"></span>
-    <button onclick="logout()">Logout</button>
+
+    <button type="button" onclick="logout()">
+      Logout
+    </button>
+
   </div>
+
 </header>
 
-<!-- LOGIN -->
+
+<!-- =========================
+     LOGIN
+========================= -->
+
 <section id="login" class="login-page">
 
   <div class="login-box">
@@ -36,15 +51,21 @@
       id="le"
       type="email"
       placeholder="Email"
+      autocomplete="email"
     >
 
     <input
       id="lp"
       type="password"
       placeholder="Password"
+      autocomplete="current-password"
     >
 
-    <button onclick="login()">
+    <button
+      id="loginBtn"
+      type="button"
+      onclick="login()"
+    >
       Login
     </button>
 
@@ -55,40 +76,77 @@
 </section>
 
 
-<!-- SELLER APP -->
+<!-- =========================
+     SELLER APP
+========================= -->
+
 <main id="app" style="display:none">
 
   <section class="banner">
+
     <h1>Seller Dashboard</h1>
+
     <p>
       Add products and manage your BUYZO orders.
     </p>
+
   </section>
+
 
   <div id="notice"></div>
 
 
-  <!-- DASHBOARD -->
+  <!-- =========================
+       PRODUCTS
+  ========================= -->
+
   <div class="layout">
 
+
     <!-- ADD PRODUCT -->
+
     <section class="card">
 
       <h2>➕ Add Product</h2>
 
       <input
         id="name"
+        type="text"
         placeholder="Product name"
       >
 
       <select id="category">
-        <option>Mobiles</option>
-        <option>Fashion</option>
-        <option>Electronics</option>
-        <option>Home</option>
-        <option>Beauty</option>
-        <option>Sports</option>
+
+        <option value="Mobiles">
+          Mobiles
+        </option>
+
+        <option value="Fashion">
+          Fashion
+        </option>
+
+        <option value="Electronics">
+          Electronics
+        </option>
+
+        <option value="Home">
+          Home
+        </option>
+
+        <option value="Beauty">
+          Beauty
+        </option>
+
+        <option value="Sports">
+          Sports
+        </option>
+
+        <option value="Other">
+          Other
+        </option>
+
       </select>
+
 
       <input
         id="price"
@@ -97,12 +155,14 @@
         placeholder="Selling price ₹"
       >
 
+
       <input
         id="old"
         type="number"
         min="0"
         placeholder="MRP ₹ (optional)"
       >
+
 
       <input
         id="stock"
@@ -112,14 +172,18 @@
         placeholder="Stock quantity"
       >
 
+
       <input
         id="emoji"
-        placeholder="Emoji (optional, e.g. 📱)"
+        type="text"
+        placeholder="Emoji optional e.g. 📱"
       >
+
 
       <label>
         Product Photo
       </label>
+
 
       <input
         id="productImage"
@@ -128,14 +192,18 @@
         onchange="previewImage()"
       >
 
+
       <img
         id="imagePreview"
         class="preview"
         style="display:none"
+        alt="Preview"
       >
+
 
       <button
         class="add"
+        type="button"
         onclick="addProduct()"
       >
         Add Product
@@ -144,7 +212,8 @@
     </section>
 
 
-    <!-- PRODUCTS -->
+    <!-- PRODUCT LIST -->
+
     <section class="card">
 
       <div class="listHead">
@@ -154,13 +223,23 @@
           (<span id="count">0</span>)
         </h2>
 
-        <button onclick="load()">
+
+        <button
+          type="button"
+          onclick="load()"
+        >
           ↻ Refresh
         </button>
 
       </div>
 
+
       <div id="list">
+
+        <p>
+          Login karke products dekho.
+        </p>
+
       </div>
 
     </section>
@@ -168,12 +247,16 @@
   </div>
 
 
-  <!-- ORDERS -->
+  <!-- =========================
+       ORDERS
+  ========================= -->
+
   <section class="card ordersCard">
 
     <div class="listHead">
 
       <div>
+
         <h2>
           📦 Customer Orders
           (<span id="orderCount">0</span>)
@@ -182,9 +265,14 @@
         <small>
           Orders for your products
         </small>
+
       </div>
 
-      <button onclick="loadOrders()">
+
+      <button
+        type="button"
+        onclick="loadOrders()"
+      >
         ↻ Refresh Orders
       </button>
 
@@ -194,10 +282,15 @@
     <div id="ordersList">
 
       <div class="emptyOrders">
-        <h3>📦 No orders yet</h3>
+
+        <h3>
+          📦 No orders yet
+        </h3>
+
         <p>
           Customer order karega to yahan dikhega.
         </p>
+
       </div>
 
     </div>
@@ -207,7 +300,35 @@
 </main>
 
 
-<!-- ORDER DETAILS MODAL -->
+<!-- =========================
+     ORDER MODAL
+========================= -->
 
 <div
-  id="order
+  id="orderModal"
+  class="modal"
+  style="display:none"
+>
+
+  <div class="modalBox">
+
+    <button
+      class="modalClose"
+      type="button"
+      onclick="closeOrderModal()"
+    >
+      ✕
+    </button>
+
+
+    <div id="orderDetails"></div>
+
+  </div>
+
+</div>
+
+
+<script src="./seller.js"></script>
+
+</body>
+</html>
