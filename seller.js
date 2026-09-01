@@ -1,12 +1,7 @@
-/* =====================================================
+/* =========================================
    BUYZO SELLER PANEL
-   SUPABASE + LOGIN + PRODUCTS + ORDERS
-===================================================== */
-
-
-/* =========================
-   SUPABASE CONFIG
-========================= */
+   SUPABASE
+========================================= */
 
 const SUPABASE_URL =
   "https://ahhrhjucbdddcdlzjokg.supabase.co";
@@ -20,20 +15,18 @@ const db = window.supabase.createClient(
 );
 
 
-/* =========================
-   GLOBAL VARIABLES
-========================= */
-
 let user = null;
 let products = [];
 let orders = [];
 
 
-/* =====================================================
+/* =========================================
    INIT
-===================================================== */
+========================================= */
 
 async function init() {
+
+  console.log("BUYZO Seller starting...");
 
   try {
 
@@ -48,30 +41,45 @@ async function init() {
       );
 
       showLogin();
+
       return;
     }
+
 
     user =
       result.data.session?.user || null;
 
-    console.log(
-      "CURRENT USER:",
-      user
-    );
 
     if (user) {
 
-      showApp();
-
-      setText(
-        "email",
-        user.email || ""
+      console.log(
+        "Logged user:",
+        user.email
       );
 
+      showApp();
+
+
+      const email =
+        document.getElementById("email");
+
+      if (email) {
+
+        email.textContent =
+          user.email || "";
+
+      }
+
+
       await load();
+
       await loadOrders();
 
     } else {
+
+      console.log(
+        "No active session"
+      );
 
       showLogin();
 
@@ -87,12 +95,13 @@ async function init() {
     showLogin();
 
   }
+
 }
 
 
-/* =====================================================
-   SUPABASE AUTH STATE
-===================================================== */
+/* =========================================
+   AUTH STATE
+========================================= */
 
 db.auth.onAuthStateChange(
   async (event, session) => {
@@ -102,45 +111,39 @@ db.auth.onAuthStateChange(
       event
     );
 
+
     user =
       session?.user || null;
+
 
     if (user) {
 
       showApp();
 
-      setText(
-        "email",
-        user.email || ""
-      );
 
-      /*
-       * Delay loading slightly so Supabase
-       * auth state completely settles.
-       */
+      const email =
+        document.getElementById("email");
 
-      setTimeout(async () => {
+      if (email) {
 
-        await load();
-        await loadOrders();
+        email.textContent =
+          user.email || "";
 
-      }, 100);
+      }
 
     } else {
-
-      products = [];
-      orders = [];
 
       showLogin();
 
     }
+
   }
 );
 
 
-/* =====================================================
+/* =========================================
    SHOW LOGIN
-===================================================== */
+========================================= */
 
 function showLogin() {
 
@@ -150,6 +153,7 @@ function showLogin() {
   const app =
     document.getElementById("app");
 
+
   if (login) {
 
     login.style.display =
@@ -157,18 +161,30 @@ function showLogin() {
 
   }
 
+
   if (app) {
 
     app.style.display =
       "none";
 
   }
+
+
+  const email =
+    document.getElementById("email");
+
+  if (email) {
+
+    email.textContent = "";
+
+  }
+
 }
 
 
-/* =====================================================
+/* =========================================
    SHOW APP
-===================================================== */
+========================================= */
 
 function showApp() {
 
@@ -178,6 +194,7 @@ function showApp() {
   const app =
     document.getElementById("app");
 
+
   if (login) {
 
     login.style.display =
@@ -185,18 +202,20 @@ function showApp() {
 
   }
 
+
   if (app) {
 
     app.style.display =
       "block";
 
   }
+
 }
 
 
-/* =====================================================
+/* =========================================
    LOGIN
-===================================================== */
+========================================= */
 
 async function login() {
 
@@ -209,6 +228,10 @@ async function login() {
   const msg =
     document.getElementById("loginMsg");
 
+  const button =
+    document.getElementById("loginBtn");
+
+
   const email =
     emailInput?.value.trim() || "";
 
@@ -216,20 +239,39 @@ async function login() {
     passwordInput?.value || "";
 
 
-  /* CHECK INPUT */
+  /* VALIDATION */
 
-  if (!email || !password) {
+  if (!email) {
 
     if (msg) {
 
       msg.textContent =
-        "Email aur password enter karo.";
+        "❌ Email enter karo.";
 
     }
+
+    emailInput?.focus();
 
     return;
   }
 
+
+  if (!password) {
+
+    if (msg) {
+
+      msg.textContent =
+        "❌ Password enter karo.";
+
+    }
+
+    passwordInput?.focus();
+
+    return;
+  }
+
+
+  /* LOADING */
 
   if (msg) {
 
@@ -239,10 +281,20 @@ async function login() {
   }
 
 
+  if (button) {
+
+    button.disabled = true;
+
+    button.textContent =
+      "Login...";
+
+  }
+
+
   try {
 
     console.log(
-      "LOGIN EMAIL:",
+      "Trying login:",
       email
     );
 
@@ -266,7 +318,7 @@ async function login() {
     if (result.error) {
 
       console.error(
-        "SUPABASE LOGIN ERROR:",
+        "LOGIN ERROR:",
         result.error
       );
 
@@ -278,6 +330,7 @@ async function login() {
           result.error.message;
 
       }
+
 
       return;
     }
@@ -296,7 +349,7 @@ async function login() {
     }
 
 
-    /* LOGIN SUCCESS */
+    /* SUCCESS */
 
     user =
       result.data.user;
@@ -313,10 +366,15 @@ async function login() {
     showApp();
 
 
-    setText(
-      "email",
-      user.email || ""
-    );
+    const emailElement =
+      document.getElementById("email");
+
+    if (emailElement) {
+
+      emailElement.textContent =
+        user.email || "";
+
+    }
 
 
     await load();
@@ -327,7 +385,7 @@ async function login() {
   } catch (error) {
 
     console.error(
-      "LOGIN ERROR:",
+      "LOGIN CATCH ERROR:",
       error
     );
 
@@ -343,32 +401,39 @@ async function login() {
 
     }
 
+  } finally {
+
+    if (button) {
+
+      button.disabled = false;
+
+      button.textContent =
+        "Login";
+
+    }
+
   }
+
 }
 
 
-/* =====================================================
+/* =========================================
    LOGOUT
-===================================================== */
+========================================= */
 
 async function logout() {
 
   try {
 
-    const result =
+    const { error } =
       await db.auth.signOut();
 
 
-    if (result.error) {
+    if (error) {
 
       console.error(
         "LOGOUT ERROR:",
-        result.error
-      );
-
-      notice(
-        "Logout error: " +
-        result.error.message
+        error
       );
 
       return;
@@ -381,7 +446,19 @@ async function logout() {
 
     orders = [];
 
+
     showLogin();
+
+
+    const msg =
+      document.getElementById("loginMsg");
+
+    if (msg) {
+
+      msg.textContent =
+        "Logout successful.";
+
+    }
 
 
   } catch (error) {
@@ -392,19 +469,20 @@ async function logout() {
     );
 
   }
+
 }
 
 
-/* =====================================================
+/* =========================================
    LOAD PRODUCTS
-===================================================== */
+========================================= */
 
 async function load() {
 
   if (!user) {
 
     console.log(
-      "No logged-in user."
+      "No seller logged in."
     );
 
     return;
@@ -464,7 +542,6 @@ async function load() {
 
     render();
 
-
   } catch (error) {
 
     console.error(
@@ -473,12 +550,13 @@ async function load() {
     );
 
   }
+
 }
 
 
-/* =====================================================
+/* =========================================
    RENDER PRODUCTS
-===================================================== */
+========================================= */
 
 function render() {
 
@@ -506,6 +584,7 @@ function render() {
       "<p>No products yet.</p>";
 
     return;
+
   }
 
 
@@ -528,11 +607,13 @@ function render() {
           <img
             class="pic"
             src="${escapeAttr(image)}"
+            alt="${escapeAttr(product.name)}"
             onerror="
               this.onerror=null;
               this.src='${fallback}'
             "
           >
+
 
           <div class="info">
 
@@ -541,6 +622,7 @@ function render() {
                 product.name
               )}
             </b>
+
 
             <small>
 
@@ -554,6 +636,7 @@ function render() {
 
             </small>
 
+
             <strong>
 
               ₹${Number(
@@ -566,6 +649,7 @@ function render() {
 
 
           <button
+            type="button"
             onclick="
               del(${Number(product.id)})
             "
@@ -582,9 +666,9 @@ function render() {
 }
 
 
-/* =====================================================
+/* =========================================
    ADD PRODUCT
-===================================================== */
+========================================= */
 
 async function addProduct() {
 
@@ -595,35 +679,30 @@ async function addProduct() {
     );
 
     return;
+
   }
 
 
   const name =
-    document
-      .getElementById("name")
-      ?.value
-      .trim();
+    document.getElementById("name")
+      ?.value.trim() || "";
 
 
   const category =
-    document
-      .getElementById("category")
-      ?.value ||
-    "Other";
+    document.getElementById("category")
+      ?.value || "Other";
 
 
   const price =
     Number(
-      document
-        .getElementById("price")
+      document.getElementById("price")
         ?.value
     );
 
 
-  const old =
+  const oldPrice =
     Number(
-      document
-        .getElementById("old")
+      document.getElementById("old")
         ?.value
     ) || null;
 
@@ -632,52 +711,63 @@ async function addProduct() {
     Math.max(
       0,
       Number(
-        document
-          .getElementById("stock")
+        document.getElementById("stock")
           ?.value
       ) || 0
     );
 
 
   const emoji =
-    document
-      .getElementById("emoji")
-      ?.value ||
-    "🛍️";
+    document.getElementById("emoji")
+      ?.value || "🛍️";
 
 
   const file =
-    document
-      .getElementById("productImage")
-      ?.files?.[0];
+    document.getElementById("productImage")
+      ?.files[0];
 
 
-  /* VALIDATION */
-
-  if (
-    !name ||
-    !price ||
-    !file
-  ) {
+  if (!name) {
 
     notice(
-      "Product name, price aur photo required hai."
+      "Product name required hai."
     );
 
     return;
+
   }
 
 
-  if (
-    file.size >
-    5 * 1024 * 1024
-  ) {
+  if (!price || price <= 0) {
+
+    notice(
+      "Valid product price enter karo."
+    );
+
+    return;
+
+  }
+
+
+  if (!file) {
+
+    notice(
+      "Product photo select karo."
+    );
+
+    return;
+
+  }
+
+
+  if (file.size > 5 * 1024 * 1024) {
 
     notice(
       "Photo 5MB se chhoti honi chahiye."
     );
 
     return;
+
   }
 
 
@@ -697,11 +787,15 @@ async function addProduct() {
       ).toLowerCase();
 
 
+    const fileName =
+      `${crypto.randomUUID()}.${extension}`;
+
+
     const path =
-      `${user.id}/${crypto.randomUUID()}.${extension}`;
+      `${user.id}/${fileName}`;
 
 
-    /* UPLOAD IMAGE */
+    /* UPLOAD */
 
     const upload =
       await db
@@ -712,15 +806,21 @@ async function addProduct() {
           file,
           {
             contentType:
-              file.type,
+              file.type ||
+              "image/jpeg",
 
-            upsert:
-              false
+            upsert: false
           }
         );
 
 
     if (upload.error) {
+
+      console.error(
+        "UPLOAD ERROR:",
+        upload.error
+      );
+
 
       notice(
         "Photo upload error: " +
@@ -728,65 +828,63 @@ async function addProduct() {
       );
 
       return;
+
     }
 
 
-    /* PUBLIC IMAGE URL */
+    /* PUBLIC URL */
 
-    const publicURL =
+    const publicResult =
       db
         .storage
         .from("product-images")
-        .getPublicUrl(path)
-        .data
-        .publicUrl;
+        .getPublicUrl(path);
 
 
-    /* SAVE PRODUCT */
+    const publicURL =
+      publicResult.data.publicUrl;
+
+
+    /* DATABASE */
 
     const result =
       await db
         .from("products")
         .insert({
 
-          name:
-            name,
+          name: name,
 
-          category:
-            category,
+          category: category,
 
-          price:
-            price,
+          price: price,
 
-          old_price:
-            old,
+          old_price: oldPrice,
 
-          stock:
-            stock,
+          stock: stock,
 
-          emoji:
-            emoji,
+          emoji: emoji,
 
-          image_url:
-            publicURL,
+          image_url: publicURL,
 
-          image_path:
-            path,
+          image_path: path,
 
-          seller_id:
-            user.id
+          seller_id: user.id
 
         });
 
 
     if (result.error) {
 
+      console.error(
+        "PRODUCT INSERT ERROR:",
+        result.error
+      );
+
+
       await db
         .storage
         .from("product-images")
-        .remove([
-          path
-        ]);
+        .remove([path]);
 
 
       notice(
@@ -795,43 +893,40 @@ async function addProduct() {
       );
 
       return;
-    }
-
-
-    /* CLEAR FORM */
-
-    clearInput("name");
-
-    clearInput("price");
-
-    clearInput("old");
-
-    clearInput("emoji");
-
-    const stockInput =
-      document.getElementById(
-        "stock"
-      );
-
-    if (stockInput) {
-
-      stockInput.value =
-        "1";
 
     }
 
 
-    const imageInput =
-      document.getElementById(
-        "productImage"
-      );
+    /* RESET */
 
-    if (imageInput) {
+    document.getElementById(
+      "name"
+    ).value = "";
 
-      imageInput.value =
-        "";
 
-    }
+    document.getElementById(
+      "price"
+    ).value = "";
+
+
+    document.getElementById(
+      "old"
+    ).value = "";
+
+
+    document.getElementById(
+      "emoji"
+    ).value = "";
+
+
+    document.getElementById(
+      "stock"
+    ).value = "1";
+
+
+    document.getElementById(
+      "productImage"
+    ).value = "";
 
 
     const preview =
@@ -842,8 +937,7 @@ async function addProduct() {
 
     if (preview) {
 
-      preview.src =
-        "";
+      preview.src = "";
 
       preview.style.display =
         "none";
@@ -876,66 +970,67 @@ async function addProduct() {
     );
 
   }
+
 }
 
 
-/* =====================================================
+/* =========================================
    IMAGE PREVIEW
-===================================================== */
+========================================= */
 
 function previewImage() {
 
   const file =
-    document
-      .getElementById("productImage")
-      ?.files?.[0];
+    document.getElementById(
+      "productImage"
+    )?.files[0];
 
 
-  const img =
+  const image =
     document.getElementById(
       "imagePreview"
     );
 
 
-  if (!file || !img) {
+  if (!file || !image) {
 
-    if (img) {
+    if (image) {
 
-      img.style.display =
+      image.style.display =
         "none";
 
     }
 
     return;
+
   }
 
 
-  img.src =
+  image.src =
     URL.createObjectURL(file);
 
 
-  img.style.display =
+  image.style.display =
     "block";
 
 }
 
 
-/* =====================================================
+/* =========================================
    DELETE PRODUCT
-===================================================== */
+========================================= */
 
 async function del(id) {
 
   if (!user) return;
 
 
-  if (
-    !confirm(
-      "Kya tum ye product delete karna chahte ho?"
-    )
-  ) {
+  if (!confirm(
+    "Kya tum ye product delete karna chahte ho?"
+  )) {
 
     return;
+
   }
 
 
@@ -947,71 +1042,54 @@ async function del(id) {
     );
 
 
-  try {
-
-    const result =
-      await db
-        .from("products")
-        .delete()
-        .eq(
-          "id",
-          id
-        )
-        .eq(
-          "seller_id",
-          user.id
-        );
-
-
-    if (result.error) {
-
-      notice(
-        "Delete error: " +
-        result.error.message
+  const result =
+    await db
+      .from("products")
+      .delete()
+      .eq("id", id)
+      .eq(
+        "seller_id",
+        user.id
       );
 
-      return;
-    }
 
-
-    /* DELETE IMAGE */
-
-    if (
-      product?.image_path
-    ) {
-
-      await db
-        .storage
-        .from("product-images")
-        .remove([
-          product.image_path
-        ]);
-
-    }
-
+  if (result.error) {
 
     notice(
-      "✅ Product deleted."
+      "Delete error: " +
+      result.error.message
     );
 
-
-    await load();
-
-
-  } catch (error) {
-
-    console.error(
-      "DELETE ERROR:",
-      error
-    );
+    return;
 
   }
+
+
+  if (product?.image_path) {
+
+    await db
+      .storage
+      .from("product-images")
+      .remove([
+        product.image_path
+      ]);
+
+  }
+
+
+  notice(
+    "✅ Product deleted."
+  );
+
+
+  await load();
+
 }
 
 
-/* =====================================================
+/* =========================================
    LOAD ORDERS
-===================================================== */
+========================================= */
 
 async function loadOrders() {
 
@@ -1032,79 +1110,69 @@ async function loadOrders() {
   }
 
 
-  try {
-
-    const result =
-      await db
-        .from("orders")
-        .select("*")
-        .eq(
-          "seller_id",
-          user.id
-        )
-        .order(
-          "created_at",
-          {
-            ascending: false
-          }
-        );
-
-
-    if (result.error) {
-
-      console.error(
-        "ORDERS ERROR:",
-        result.error
+  const result =
+    await db
+      .from("orders")
+      .select("*")
+      .eq(
+        "seller_id",
+        user.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
       );
 
 
-      if (box) {
-
-        box.innerHTML = `
-
-          <div class="emptyOrders">
-
-            <h3>
-              Orders load nahi ho rahe.
-            </h3>
-
-            <p>
-              ${escapeHTML(
-                result.error.message
-              )}
-            </p>
-
-          </div>
-
-        `;
-
-      }
-
-      return;
-    }
-
-
-    orders =
-      result.data || [];
-
-
-    renderOrders();
-
-
-  } catch (error) {
+  if (result.error) {
 
     console.error(
-      "LOAD ORDERS ERROR:",
-      error
+      "ORDERS ERROR:",
+      result.error
     );
 
+
+    if (box) {
+
+      box.innerHTML = `
+
+        <div class="emptyOrders">
+
+          <h3>
+            Orders load nahi ho rahe.
+          </h3>
+
+          <p>
+            ${escapeHTML(
+              result.error.message
+            )}
+          </p>
+
+        </div>
+
+      `;
+
+    }
+
+    return;
+
   }
+
+
+  orders =
+    result.data || [];
+
+
+  renderOrders();
+
 }
 
 
-/* =====================================================
+/* =========================================
    RENDER ORDERS
-===================================================== */
+========================================= */
 
 function renderOrders() {
 
@@ -1151,6 +1219,7 @@ function renderOrders() {
     `;
 
     return;
+
   }
 
 
@@ -1164,19 +1233,8 @@ function renderOrders() {
 
       const total =
         Number(
-          order.total ||
-          0
+          order.total || 0
         );
-
-
-      const statuses = [
-        "New",
-        "Confirmed",
-        "Packed",
-        "Shipped",
-        "Delivered",
-        "Cancelled"
-      ];
 
 
       return `
@@ -1188,38 +1246,26 @@ function renderOrders() {
             <div>
 
               <h3>
-
-                📦 Order #
-
-                ${escapeHTML(
+                📦 Order #${escapeHTML(
                   order.order_no ||
                   String(order.id)
                 )}
-
               </h3>
 
-              <small>
 
+              <small>
                 ${formatDate(
                   order.created_at
                 )}
-
               </small>
 
             </div>
 
 
             <span
-              class="
-                orderStatus
-                ${statusClass(status)}
-              "
+              class="orderStatus ${statusClass(status)}"
             >
-
-              ${escapeHTML(
-                status
-              )}
-
+              ${escapeHTML(status)}
             </span>
 
           </div>
@@ -1233,74 +1279,56 @@ function renderOrders() {
 
 
             <p>
-
               <b>Name:</b>
-
               ${escapeHTML(
                 order.customer_name ||
                 "-"
               )}
-
             </p>
 
 
             <p>
-
               <b>Mobile:</b>
-
               ${escapeHTML(
                 order.mobile ||
                 "-"
               )}
-
             </p>
 
 
             <p>
-
               <b>Address:</b>
-
               ${escapeHTML(
                 order.address ||
                 "-"
               )}
-
             </p>
 
 
             <p>
-
               <b>City:</b>
-
               ${escapeHTML(
                 order.city ||
                 "-"
               )}
-
             </p>
 
 
             <p>
-
               <b>State:</b>
-
               ${escapeHTML(
                 order.state ||
                 "-"
               )}
-
             </p>
 
 
             <p>
-
               <b>Pincode:</b>
-
               ${escapeHTML(
                 order.pincode ||
                 "-"
               )}
-
             </p>
 
           </div>
@@ -1309,21 +1337,16 @@ function renderOrders() {
           <div class="orderBottom">
 
             <strong>
-
-              💰 ₹${total.toLocaleString(
-                "en-IN"
-              )}
-
+              💰 ₹${total.toLocaleString("en-IN")}
             </strong>
 
 
             <div class="orderActions">
 
               <button
+                type="button"
                 onclick="
-                  viewOrder(
-                    ${Number(order.id)}
-                  )
+                  viewOrder(${Number(order.id)})
                 "
               >
                 View
@@ -1339,22 +1362,27 @@ function renderOrders() {
                 "
               >
 
-                ${statuses.map(
-                  s => `
+                ${[
+                  "New",
+                  "Confirmed",
+                  "Packed",
+                  "Shipped",
+                  "Delivered",
+                  "Cancelled"
+                ].map(statusName => `
 
-                    <option
-                      value="${s}"
-                      ${
-                        status === s
-                          ? "selected"
-                          : ""
-                      }
-                    >
-                      ${s}
-                    </option>
+                  <option
+                    value="${statusName}"
+                    ${
+                      status === statusName
+                        ? "selected"
+                        : ""
+                    }
+                  >
+                    ${statusName}
+                  </option>
 
-                  `
-                ).join("")}
+                `).join("")}
 
               </select>
 
@@ -1371,9 +1399,9 @@ function renderOrders() {
 }
 
 
-/* =====================================================
+/* =========================================
    VIEW ORDER
-===================================================== */
+========================================= */
 
 function viewOrder(id) {
 
@@ -1403,6 +1431,7 @@ function viewOrder(id) {
   if (!modal || !details) {
 
     return;
+
   }
 
 
@@ -1411,14 +1440,10 @@ function viewOrder(id) {
     <div class="detailBox">
 
       <h3>
-
-        📦 Order #
-
-        ${escapeHTML(
+        📦 Order #${escapeHTML(
           order.order_no ||
           String(order.id)
         )}
-
       </h3>
 
 
@@ -1431,74 +1456,56 @@ function viewOrder(id) {
 
 
       <p>
-
         <b>Name:</b>
-
         ${escapeHTML(
           order.customer_name ||
           "-"
         )}
-
       </p>
 
 
       <p>
-
         <b>Mobile:</b>
-
         ${escapeHTML(
           order.mobile ||
           "-"
         )}
-
       </p>
 
 
       <p>
-
         <b>Address:</b>
-
         ${escapeHTML(
           order.address ||
           "-"
         )}
-
       </p>
 
 
       <p>
-
         <b>City:</b>
-
         ${escapeHTML(
           order.city ||
           "-"
         )}
-
       </p>
 
 
       <p>
-
         <b>State:</b>
-
         ${escapeHTML(
           order.state ||
           "-"
         )}
-
       </p>
 
 
       <p>
-
         <b>Pincode:</b>
-
         ${escapeHTML(
           order.pincode ||
           "-"
         )}
-
       </p>
 
 
@@ -1511,12 +1518,10 @@ function viewOrder(id) {
 
 
       <p>
-
         ${escapeHTML(
           order.payment_method ||
           "Cash on Delivery"
         )}
-
       </p>
 
 
@@ -1525,11 +1530,8 @@ function viewOrder(id) {
         <b>Total:</b>
 
         ₹${Number(
-          order.total ||
-          0
-        ).toLocaleString(
-          "en-IN"
-        )}
+          order.total || 0
+        ).toLocaleString("en-IN")}
 
       </p>
 
@@ -1543,14 +1545,11 @@ function viewOrder(id) {
 
 
       <p>
-
         ${escapeHTML(
           order.status ||
           "New"
         )}
-
       </p>
-
 
     </div>
 
@@ -1563,9 +1562,9 @@ function viewOrder(id) {
 }
 
 
-/* =====================================================
-   CLOSE ORDER MODAL
-===================================================== */
+/* =========================================
+   CLOSE MODAL
+========================================= */
 
 function closeOrderModal() {
 
@@ -1585,9 +1584,9 @@ function closeOrderModal() {
 }
 
 
-/* =====================================================
+/* =========================================
    UPDATE ORDER STATUS
-===================================================== */
+========================================= */
 
 async function updateOrderStatus(
   id,
@@ -1597,59 +1596,45 @@ async function updateOrderStatus(
   if (!user) return;
 
 
-  try {
-
-    const result =
-      await db
-        .from("orders")
-        .update({
-          status:
-            status
-        })
-        .eq(
-          "id",
-          id
-        )
-        .eq(
-          "seller_id",
-          user.id
-        );
-
-
-    if (result.error) {
-
-      notice(
-        "Status update error: " +
-        result.error.message
+  const result =
+    await db
+      .from("orders")
+      .update({
+        status: status
+      })
+      .eq("id", id)
+      .eq(
+        "seller_id",
+        user.id
       );
 
-      return;
-    }
 
+  if (result.error) {
 
     notice(
-      "✅ Order status updated: " +
-      status
+      "Status update error: " +
+      result.error.message
     );
 
-
-    await loadOrders();
-
-
-  } catch (error) {
-
-    console.error(
-      "STATUS ERROR:",
-      error
-    );
+    return;
 
   }
+
+
+  notice(
+    "✅ Order status updated: " +
+    status
+  );
+
+
+  await loadOrders();
+
 }
 
 
-/* =====================================================
+/* =========================================
    NOTICE
-===================================================== */
+========================================= */
 
 function notice(message) {
 
@@ -1669,9 +1654,9 @@ function notice(message) {
 }
 
 
-/* =====================================================
-   DATE FORMAT
-===================================================== */
+/* =========================================
+   DATE
+========================================= */
 
 function formatDate(date) {
 
@@ -1680,11 +1665,8 @@ function formatDate(date) {
 
   try {
 
-    return new Date(
-      date
-    ).toLocaleString(
-      "en-IN"
-    );
+    return new Date(date)
+      .toLocaleString("en-IN");
 
   } catch {
 
@@ -1695,15 +1677,14 @@ function formatDate(date) {
 }
 
 
-/* =====================================================
+/* =========================================
    STATUS CLASS
-===================================================== */
+========================================= */
 
 function statusClass(status) {
 
   return String(
-    status ||
-    "New"
+    status || "New"
   )
     .toLowerCase()
     .replace(
@@ -1714,9 +1695,9 @@ function statusClass(status) {
 }
 
 
-/* =====================================================
+/* =========================================
    SECURITY
-===================================================== */
+========================================= */
 
 function escapeHTML(value) {
 
@@ -1726,20 +1707,15 @@ function escapeHTML(value) {
     /[&<>"']/g,
     char => ({
 
-      "&":
-        "&amp;",
+      "&": "&amp;",
 
-      "<":
-        "&lt;",
+      "<": "&lt;",
 
-      ">":
-        "&gt;",
+      ">": "&gt;",
 
-      '"':
-        "&quot;",
+      '"': "&quot;",
 
-      "'":
-        "&#039;"
+      "'": "&#039;"
 
     }[char])
   );
@@ -1749,62 +1725,18 @@ function escapeHTML(value) {
 
 function escapeAttr(value) {
 
-  return escapeHTML(
-    value
-  ).replace(
-    /`/g,
-    "&#096;"
-  );
-
-}
-
-
-/* =====================================================
-   HELPER FUNCTIONS
-===================================================== */
-
-function setText(
-  id,
-  value
-) {
-
-  const element =
-    document.getElementById(
-      id
+  return escapeHTML(value)
+    .replace(
+      /`/g,
+      "&#096;"
     );
 
-
-  if (element) {
-
-    element.textContent =
-      value;
-
-  }
-
 }
 
 
-function clearInput(id) {
-
-  const element =
-    document.getElementById(
-      id
-    );
-
-
-  if (element) {
-
-    element.value =
-      "";
-
-  }
-
-}
-
-
-/* =====================================================
+/* =========================================
    START
-===================================================== */
+========================================= */
 
 document.addEventListener(
   "DOMContentLoaded",
