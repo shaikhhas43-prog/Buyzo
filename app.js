@@ -1,34 +1,631 @@
-const SUPABASE_URL="https://ahhrhjucbdddcdlzjokg.supabase.co";
-const SUPABASE_KEY="sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
-const WHATSAPP_NUMBER="919725231594";
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let allProducts=[],filteredProducts=[],cart=JSON.parse(localStorage.getItem("buyzo_cart")||"[]"),currentOrder=null;
+const SUPABASE_URL = "https://ahhrhjucbdddcdlzjokg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
+const WHATSAPP_NUMBER = "919725231594";
 
-document.addEventListener("DOMContentLoaded",()=>{loadProducts();updateCartCount();document.getElementById("search")?.addEventListener("keydown",e=>{if(e.key==="Enter")searchProducts()});document.getElementById("checkoutForm")?.addEventListener("submit",placeOrder)});
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-async function loadProducts(){const grid=document.getElementById("productGrid");if(!grid)return;grid.innerHTML='<div class="loading">Loading BUYZO products...</div>';const {data,error}=await db.from("products").select("id,name,category,price,old_price,stock,emoji,image_url,seller_id,created_at").order("created_at",{ascending:false});if(error){grid.innerHTML=`<div class="empty"><h3>Products load nahi ho rahe.</h3><p>${escapeHTML(error.message)}</p></div>`;return}allProducts=data||[];filteredProducts=[...allProducts];renderProducts()}
-function renderProducts(){const grid=document.getElementById("productGrid");if(!grid)return;if(!filteredProducts.length){grid.innerHTML='<div class="empty"><h3>No products found</h3><p>Abhi is category me product available nahi hai.</p></div>';return}grid.innerHTML=filteredProducts.map(createProductCard).join("")}
-function createProductCard(p){const price=Number(p.price||0),old=Number(p.old_price||0),stock=Number(p.stock??0),img=(p.image_url||"").trim(),fallback=`https://placehold.co/700x700/f0f1f6/171b35?text=${encodeURIComponent(p.emoji||"BUYZO")}`,discount=old>price?Math.round((old-price)/old*100):0;return `<article class="productCard"><div class="productImage">${discount?`<span class="discount">${discount}% OFF</span>`:""}<img src="${escapeAttr(img||fallback)}" alt="${escapeHTML(p.name)}" onerror="this.onerror=null;this.src='${fallback}'"></div><div class="productBody"><small class="category">${escapeHTML(p.category||"Other")}</small><h3>${escapeHTML(p.name)}</h3><div class="price"><strong>₹${price.toLocaleString("en-IN")}</strong>${old>price?`<del>₹${old.toLocaleString("en-IN")}</del>`:""}</div><div class="stock">${stock>0?`✓ In stock (${stock})`:"✕ Out of stock"}</div><button class="addCart" onclick="addToCart(${Number(p.id)})" ${stock<=0?"disabled":""}>${stock<=0?"Out of Stock":"🛒 Add to Cart"}</button></div></article>`}
-function filterCat(c){filteredProducts=c==="All"?[...allProducts]:allProducts.filter(p=>String(p.category||"").toLowerCase()===c.toLowerCase());renderProducts();document.getElementById("products")?.scrollIntoView({behavior:"smooth"})}
-function searchProducts(){const q=document.getElementById("search")?.value.trim().toLowerCase()||"";filteredProducts=!q?[...allProducts]:allProducts.filter(p=>String(p.name||"").toLowerCase().includes(q)||String(p.category||"").toLowerCase().includes(q));renderProducts();document.getElementById("products")?.scrollIntoView({behavior:"smooth"})}
-function addToCart(id){const p=allProducts.find(x=>Number(x.id)===Number(id));if(!p)return;const stock=Number(p.stock||0);if(stock<=0)return alert("Ye product out of stock hai.");const item=cart.find(x=>Number(x.id)===Number(id));if(item){if(item.quantity>=stock)return alert("Available stock itna hi hai.");item.quantity++}else cart.push({id:p.id,name:p.name,price:Number(p.price||0),image_url:p.image_url||"",quantity:1});saveCart();updateCartCount();renderCart()}
-function updateCartCount(){const e=document.getElementById("cartCount");if(e)e.textContent=cart.reduce((s,i)=>s+Number(i.quantity||0),0)}
-function saveCart(){localStorage.setItem("buyzo_cart",JSON.stringify(cart))}
-function openCart(){document.getElementById("cartModal")?.classList.add("show");renderCart()}
-function renderCart(){const box=document.getElementById("cartItems"),totalEl=document.getElementById("cartTotal");if(!box)return;if(!cart.length){box.innerHTML='<div class="empty"><h3>Your cart is empty 🛒</h3></div>';if(totalEl)totalEl.textContent="₹0";return}let total=0;box.innerHTML=cart.map(i=>{const t=Number(i.price)*Number(i.quantity);total+=t;const f="https://placehold.co/100x100/f0f1f6/171b35?text=BUYZO";return `<div class="cartItem"><img src="${escapeAttr(i.image_url||f)}" onerror="this.src='${f}'"><div><b>${escapeHTML(i.name)}</b><p>₹${Number(i.price).toLocaleString("en-IN")}</p><div class="quantity"><button onclick="changeQty(${Number(i.id)},-1)">−</button><span>${i.quantity}</span><button onclick="changeQty(${Number(i.id)},1)">+</button></div></div><button class="remove" onclick="removeFromCart(${Number(i.id)})">×</button></div>`}).join("");if(totalEl)totalEl.textContent="₹"+total.toLocaleString("en-IN")}
-function changeQty(id,c){const i=cart.find(x=>Number(x.id)===Number(id));if(!i)return;i.quantity+=c;if(i.quantity<=0)cart=cart.filter(x=>Number(x.id)!==Number(id));saveCart();updateCartCount();renderCart()}
-function removeFromCart(id){cart=cart.filter(x=>Number(x.id)!==Number(id));saveCart();updateCartCount();renderCart()}
-function startCheckout(){if(!cart.length)return alert("Cart empty hai.");closeModal("cartModal");renderCheckoutSummary();document.getElementById("checkoutModal")?.classList.add("show")}
-function renderCheckoutSummary(){const box=document.getElementById("checkoutItems");if(!box)return;let total=0;box.innerHTML=cart.map(i=>{const t=Number(i.price)*Number(i.quantity);total+=t;return `<div class="summaryItem"><img src="${escapeAttr(i.image_url||"https://placehold.co/100x100?text=BUYZO")}"><div><b>${escapeHTML(i.name)}</b><br>${i.quantity} × ₹${Number(i.price).toLocaleString("en-IN")}</div><strong>₹${t.toLocaleString("en-IN")}</strong></div>`}).join("");document.getElementById("checkoutSubtotal").textContent="₹"+total.toLocaleString("en-IN");document.getElementById("checkoutTotal").textContent="₹"+total.toLocaleString("en-IN")}
-function placeOrder(e){e.preventDefault();const name=document.getElementById("coName").value.trim(),mobile=document.getElementById("coMobile").value.trim(),address=document.getElementById("coAddress").value.trim(),city=document.getElementById("coCity").value.trim(),state=document.getElementById("coState").value.trim(),pincode=document.getElementById("coPincode").value.trim();if(!/^\d{10}$/.test(mobile))return alert("10 digit mobile number enter karo.");if(!/^\d{6}$/.test(pincode))return alert("6 digit pincode enter karo.");const total=cart.reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);currentOrder={orderId:"BZ"+Date.now().toString().slice(-8),name,mobile,address,city,state,pincode,payment:"Cash on Delivery",items:JSON.parse(JSON.stringify(cart)),total};closeModal("checkoutModal");document.getElementById("successText").textContent=`Order #${currentOrder.orderId} — Total ₹${total.toLocaleString("en-IN")}.`;document.getElementById("successModal")?.classList.add("show")}
-function sendOrderWhatsApp(){if(!currentOrder)return;const o=currentOrder;const items=o.items.map(i=>`• ${i.name} × ${i.quantity} = ₹${(Number(i.price)*Number(i.quantity)).toLocaleString("en-IN")}`).join("\n");const msg=`*BUYZO NEW ORDER*\n\nOrder ID: ${o.orderId}\nName: ${o.name}\nMobile: ${o.mobile}\nAddress: ${o.address}, ${o.city}, ${o.state} - ${o.pincode}\nPayment: ${o.payment}\n\n*Items:*\n${items}\n\n*Total: ₹${o.total.toLocaleString("en-IN")}*`;window.location.href="https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg)}
-function finishOrder(){cart=[];saveCart();updateCartCount();currentOrder=null;closeModal("successModal")}
-function openAccount(){document.getElementById("accountModal")?.classList.add("show");loginForm()}
-function loginForm(){const f=document.getElementById("accountForm");if(!f)return;f.innerHTML='<input id="accountEmail" type="email" placeholder="Email"><input id="accountPassword" type="password" placeholder="Password"><button type="button" class="orange wide" onclick="doLogin()">Login</button>';setTab("login")}
-function signupForm(){const f=document.getElementById("accountForm");if(!f)return;f.innerHTML='<input id="accountEmail" type="email" placeholder="Email"><input id="accountPassword" type="password" placeholder="Password (minimum 6 characters)"><button type="button" class="orange wide" onclick="doSignup()">Create Account</button>';setTab("signup")}
-function setTab(t){document.getElementById("loginTab")?.classList.toggle("selected",t==="login");document.getElementById("signupTab")?.classList.toggle("selected",t==="signup")}
-async function doLogin(){const email=document.getElementById("accountEmail")?.value.trim(),password=document.getElementById("accountPassword")?.value,msg=document.getElementById("accountMsg");const {error}=await db.auth.signInWithPassword({email,password});if(error){if(msg)msg.textContent=error.message;return}if(msg)msg.textContent="Login successful ✅";setTimeout(()=>closeModal("accountModal"),500)}
-async function doSignup(){const email=document.getElementById("accountEmail")?.value.trim(),password=document.getElementById("accountPassword")?.value,msg=document.getElementById("accountMsg");if(!email||!password)return msg&&(msg.textContent="Email aur password required hai.");if(password.length<6)return msg&&(msg.textContent="Password minimum 6 characters ka hona chahiye.");const {error}=await db.auth.signUp({email,password});if(error){if(msg)msg.textContent=error.message;return}if(msg)msg.textContent="Account created. Email verify karo."}
-function closeModal(id){document.getElementById(id)?.classList.remove("show")}
-function escapeHTML(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function escapeAttr(v){return escapeHTML(v).replace(/`/g,"&#096;")}
+let allProducts = [];
+let filteredProducts = [];
+
+let cart = JSON.parse(
+  localStorage.getItem("buyzo_cart") || "[]"
+);
+
+let currentOrder = null;
+
+
+/* =========================
+   START
+========================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  loadProducts();
+  updateCartCount();
+
+  document
+    .getElementById("search")
+    ?.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        searchProducts();
+      }
+    });
+
+  document
+    .getElementById("checkoutForm")
+    ?.addEventListener("submit", placeOrder);
+
+});
+
+
+/* =========================
+   LOAD PRODUCTS
+========================= */
+
+async function loadProducts() {
+
+  const grid = document.getElementById("productGrid");
+
+  if (!grid) return;
+
+  grid.innerHTML =
+    '<div class="loading">Loading BUYZO products...</div>';
+
+  const { data, error } = await db
+    .from("products")
+    .select(`
+      id,
+      name,
+      category,
+      price,
+      old_price,
+      stock,
+      emoji,
+      image_url,
+      seller_id,
+      created_at
+    `)
+    .order("created_at", {
+      ascending: false
+    });
+
+  if (error) {
+
+    console.error("PRODUCT ERROR:", error);
+
+    grid.innerHTML = `
+      <div class="empty">
+        <h3>Products load nahi ho rahe.</h3>
+        <p>${escapeHTML(error.message)}</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  allProducts = data || [];
+  filteredProducts = [...allProducts];
+
+  renderProducts();
+}
+
+
+/* =========================
+   RENDER PRODUCTS
+========================= */
+
+function renderProducts() {
+
+  const grid = document.getElementById("productGrid");
+
+  if (!grid) return;
+
+  if (!filteredProducts.length) {
+
+    grid.innerHTML = `
+      <div class="empty">
+        <h3>No products found</h3>
+        <p>Abhi product available nahi hai.</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  grid.innerHTML =
+    filteredProducts
+      .map(createProductCard)
+      .join("");
+}
+
+
+/* =========================
+   PRODUCT CARD
+========================= */
+
+function createProductCard(p) {
+
+  const price = Number(p.price || 0);
+  const old = Number(p.old_price || 0);
+  const stock = Number(p.stock ?? 0);
+
+  const img =
+    (p.image_url || "").trim();
+
+  const fallback =
+    `https://placehold.co/700x700/f0f1f6/171b35?text=${encodeURIComponent(
+      p.emoji || "BUYZO"
+    )}`;
+
+  const discount =
+    old > price
+      ? Math.round(((old - price) / old) * 100)
+      : 0;
+
+  return `
+    <article class="productCard">
+
+      <div class="productImage">
+
+        ${
+          discount
+            ? `<span class="discount">
+                ${discount}% OFF
+              </span>`
+            : ""
+        }
+
+        <img
+          src="${escapeAttr(img || fallback)}"
+          alt="${escapeHTML(p.name)}"
+          loading="lazy"
+          onerror="this.onerror=null;this.src='${fallback}'"
+        >
+
+      </div>
+
+      <div class="productBody">
+
+        <small class="category">
+          ${escapeHTML(p.category || "Other")}
+        </small>
+
+        <h3>
+          ${escapeHTML(p.name)}
+        </h3>
+
+        <div class="price">
+
+          <strong>
+            ₹${price.toLocaleString("en-IN")}
+          </strong>
+
+          ${
+            old > price
+              ? `<del>
+                  ₹${old.toLocaleString("en-IN")}
+                </del>`
+              : ""
+          }
+
+        </div>
+
+        <div class="stock">
+
+          ${
+            stock > 0
+              ? `✓ In stock (${stock})`
+              : "✕ Out of stock"
+          }
+
+        </div>
+
+        <button
+          class="addCart"
+          onclick="addToCart(${Number(p.id)})"
+          ${stock <= 0 ? "disabled" : ""}
+        >
+          ${
+            stock <= 0
+              ? "Out of Stock"
+              : "🛒 Add to Cart"
+          }
+        </button>
+
+      </div>
+
+    </article>
+  `;
+}
+
+
+/* =========================
+   CATEGORY
+========================= */
+
+function filterCat(category) {
+
+  filteredProducts =
+    category === "All"
+      ? [...allProducts]
+      : allProducts.filter(
+          p =>
+            String(p.category || "")
+              .toLowerCase() ===
+            category.toLowerCase()
+        );
+
+  renderProducts();
+
+  document
+    .getElementById("products")
+    ?.scrollIntoView({
+      behavior: "smooth"
+    });
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+function searchProducts() {
+
+  const q =
+    document
+      .getElementById("search")
+      ?.value
+      .trim()
+      .toLowerCase() || "";
+
+  filteredProducts =
+    !q
+      ? [...allProducts]
+      : allProducts.filter(p =>
+          String(p.name || "")
+            .toLowerCase()
+            .includes(q) ||
+          String(p.category || "")
+            .toLowerCase()
+            .includes(q)
+        );
+
+  renderProducts();
+
+  document
+    .getElementById("products")
+    ?.scrollIntoView({
+      behavior: "smooth"
+    });
+}
+
+
+/* =========================
+   CART
+========================= */
+
+function addToCart(id) {
+
+  const p =
+    allProducts.find(
+      x => Number(x.id) === Number(id)
+    );
+
+  if (!p) return;
+
+  const stock =
+    Number(p.stock || 0);
+
+  if (stock <= 0) {
+
+    alert("Ye product out of stock hai.");
+
+    return;
+  }
+
+  const item =
+    cart.find(
+      x => Number(x.id) === Number(id)
+    );
+
+  if (item) {
+
+    if (item.quantity >= stock) {
+
+      alert(
+        "Available stock itna hi hai."
+      );
+
+      return;
+    }
+
+    item.quantity++;
+
+  } else {
+
+    cart.push({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price || 0),
+      image_url: p.image_url || "",
+      quantity: 1
+    });
+
+  }
+
+  saveCart();
+  updateCartCount();
+  renderCart();
+}
+
+
+/* =========================
+   CART COUNT
+========================= */
+
+function updateCartCount() {
+
+  const e =
+    document.getElementById("cartCount");
+
+  if (!e) return;
+
+  e.textContent =
+    cart.reduce(
+      (sum, item) =>
+        sum + Number(item.quantity || 0),
+      0
+    );
+}
+
+
+/* =========================
+   SAVE CART
+========================= */
+
+function saveCart() {
+
+  localStorage.setItem(
+    "buyzo_cart",
+    JSON.stringify(cart)
+  );
+}
+
+
+/* =========================
+   OPEN CART
+========================= */
+
+function openCart() {
+
+  document
+    .getElementById("cartModal")
+    ?.classList.add("show");
+
+  renderCart();
+}
+
+
+/* =========================
+   RENDER CART
+========================= */
+
+function renderCart() {
+
+  const box =
+    document.getElementById("cartItems");
+
+  const totalEl =
+    document.getElementById("cartTotal");
+
+  if (!box) return;
+
+  if (!cart.length) {
+
+    box.innerHTML = `
+      <div class="empty">
+        <h3>Your cart is empty 🛒</h3>
+        <p>Products add karo.</p>
+      </div>
+    `;
+
+    if (totalEl) {
+      totalEl.textContent = "₹0";
+    }
+
+    return;
+  }
+
+  let total = 0;
+
+  box.innerHTML =
+    cart.map(item => {
+
+      const t =
+        Number(item.price) *
+        Number(item.quantity);
+
+      total += t;
+
+      const fallback =
+        "https://placehold.co/100x100/f0f1f6/171b35?text=BUYZO";
+
+      return `
+        <div class="cartItem">
+
+          <img
+            src="${escapeAttr(
+              item.image_url || fallback
+            )}"
+            onerror="this.onerror=null;this.src='${fallback}'"
+          >
+
+          <div>
+
+            <b>
+              ${escapeHTML(item.name)}
+            </b>
+
+            <p>
+              ₹${Number(item.price)
+                .toLocaleString("en-IN")}
+            </p>
+
+            <div class="quantity">
+
+              <button
+                onclick="changeQty(${Number(item.id)},-1)"
+              >
+                −
+              </button>
+
+              <span>
+                ${item.quantity}
+              </span>
+
+              <button
+                onclick="changeQty(${Number(item.id)},1)"
+              >
+                +
+              </button>
+
+            </div>
+
+          </div>
+
+          <button
+            class="remove"
+            onclick="removeFromCart(${Number(item.id)})"
+          >
+            ×
+          </button>
+
+        </div>
+      `;
+
+    }).join("");
+
+  if (totalEl) {
+
+    totalEl.textContent =
+      "₹" + total.toLocaleString("en-IN");
+
+  }
+}
+
+
+/* =========================
+   CHANGE QUANTITY
+========================= */
+
+function changeQty(id, change) {
+
+  const item =
+    cart.find(
+      x => Number(x.id) === Number(id)
+    );
+
+  if (!item) return;
+
+  if (change > 0) {
+
+    const product =
+      allProducts.find(
+        p => Number(p.id) === Number(id)
+      );
+
+    if (
+      product &&
+      item.quantity >= Number(product.stock || 0)
+    ) {
+
+      alert("Available stock itna hi hai.");
+
+      return;
+    }
+  }
+
+  item.quantity += change;
+
+  if (item.quantity <= 0) {
+
+    cart =
+      cart.filter(
+        x => Number(x.id) !== Number(id)
+      );
+
+  }
+
+  saveCart();
+  updateCartCount();
+  renderCart();
+}
+
+
+/* =========================
+   REMOVE
+========================= */
+
+function removeFromCart(id) {
+
+  cart =
+    cart.filter(
+      x => Number(x.id) !== Number(id)
+    );
+
+  saveCart();
+  updateCartCount();
+  renderCart();
+}
+
+
+/* =========================
+   CHECKOUT
+========================= */
+
+function startCheckout() {
+
+  if (!cart.length) {
+
+    alert("Cart empty hai.");
+
+    return;
+  }
+
+  closeModal("cartModal");
+
+  renderCheckoutSummary();
+
+  document
+    .getElementById("checkoutModal")
+    ?.classList.add("show");
+}
+
+
+/* =========================
+   CHECKOUT SUMMARY
+========================= */
+
+function renderCheckoutSummary() {
+
+  const box =
+    document.getElementById("checkoutItems");
+
+  if (!box) return;
+
+  let total = 0;
+
+  box.innerHTML =
+    cart.map(item => {
+
+      const t =
+        Number(item.price) *
+        Number(item.quantity);
+
+      total += t;
+
+      const img =
+        item.image_url ||
+        "https://placehold.co/100x100?text=BUYZO";
+
+      return `
+        <div class="summaryItem">
+
+          <img
+            src="${escapeAttr(img)}"
+          >
+
+          <div>
+
+            <b>
+              ${escapeHTML(item.name)}
+            </b>
+
+            <br>
+
+            ${item.quantity}
+            ×
+            ₹${Number(item.price
