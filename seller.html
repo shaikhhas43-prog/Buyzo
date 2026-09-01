@@ -7,49 +7,207 @@
 <link rel="stylesheet" href="./seller.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
+
 <header class="top">
-  <a href="./index.html" class="logo">BUY<span>ZO</span> <small>SELLER</small></a>
-  <div class="account"><span id="email"></span><button onclick="logout()">Logout</button></div>
+  <a href="./index.html" class="logo">
+    BUY<span>ZO</span> <small>SELLER</small>
+  </a>
+
+  <div class="account">
+    <span id="email"></span>
+    <button onclick="logout()">Logout</button>
+  </div>
 </header>
 
+<!-- LOGIN -->
 <section id="login" class="login-page">
+
   <div class="login-box">
-    <div class="brand">BUY<span>ZO</span></div>
+
+    <div class="brand">
+      BUY<span>ZO</span>
+    </div>
+
     <h2>Seller Login</h2>
-    <input id="le" type="email" placeholder="Email">
-    <input id="lp" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
+
+    <input
+      id="le"
+      type="email"
+      placeholder="Email"
+    >
+
+    <input
+      id="lp"
+      type="password"
+      placeholder="Password"
+    >
+
+    <button onclick="login()">
+      Login
+    </button>
+
     <p id="loginMsg"></p>
+
   </div>
+
 </section>
 
+
+<!-- SELLER APP -->
 <main id="app" style="display:none">
-  <section class="banner"><h1>Seller Dashboard</h1><p>Add and manage your BUYZO products.</p></section>
+
+  <section class="banner">
+    <h1>Seller Dashboard</h1>
+    <p>
+      Add products and manage your BUYZO orders.
+    </p>
+  </section>
+
   <div id="notice"></div>
+
+
+  <!-- DASHBOARD -->
   <div class="layout">
+
+    <!-- ADD PRODUCT -->
     <section class="card">
-      <h2>Add Product</h2>
-      <input id="name" placeholder="Product name">
+
+      <h2>➕ Add Product</h2>
+
+      <input
+        id="name"
+        placeholder="Product name"
+      >
+
       <select id="category">
-        <option>Mobiles</option><option>Fashion</option><option>Electronics</option><option>Home</option><option>Beauty</option><option>Sports</option>
+        <option>Mobiles</option>
+        <option>Fashion</option>
+        <option>Electronics</option>
+        <option>Home</option>
+        <option>Beauty</option>
+        <option>Sports</option>
       </select>
-      <input id="price" type="number" min="1" placeholder="Selling price ₹">
-      <input id="old" type="number" min="0" placeholder="MRP ₹ (optional)">
-      <input id="stock" type="number" min="0" value="1" placeholder="Stock quantity">
-      <input id="emoji" placeholder="Emoji (optional, e.g. 📱)">
-      <label>Product Photo</label>
-      <input id="productImage" type="file" accept="image/*" onchange="previewImage()">
-      <img id="imagePreview" class="preview" style="display:none">
-      <button class="add" onclick="addProduct()">Add Product</button>
+
+      <input
+        id="price"
+        type="number"
+        min="1"
+        placeholder="Selling price ₹"
+      >
+
+      <input
+        id="old"
+        type="number"
+        min="0"
+        placeholder="MRP ₹ (optional)"
+      >
+
+      <input
+        id="stock"
+        type="number"
+        min="0"
+        value="1"
+        placeholder="Stock quantity"
+      >
+
+      <input
+        id="emoji"
+        placeholder="Emoji (optional, e.g. 📱)"
+      >
+
+      <label>
+        Product Photo
+      </label>
+
+      <input
+        id="productImage"
+        type="file"
+        accept="image/*"
+        onchange="previewImage()"
+      >
+
+      <img
+        id="imagePreview"
+        class="preview"
+        style="display:none"
+      >
+
+      <button
+        class="add"
+        onclick="addProduct()"
+      >
+        Add Product
+      </button>
+
     </section>
 
+
+    <!-- PRODUCTS -->
     <section class="card">
-      <div class="listHead"><h2>Your Products (<span id="count">0</span>)</h2><button onclick="load()">↻ Refresh</button></div>
-      <div id="list"></div>
+
+      <div class="listHead">
+
+        <h2>
+          Your Products
+          (<span id="count">0</span>)
+        </h2>
+
+        <button onclick="load()">
+          ↻ Refresh
+        </button>
+
+      </div>
+
+      <div id="list">
+      </div>
+
     </section>
+
   </div>
+
+
+  <!-- ORDERS -->
+  <section class="card ordersCard">
+
+    <div class="listHead">
+
+      <div>
+        <h2>
+          📦 Customer Orders
+          (<span id="orderCount">0</span>)
+        </h2>
+
+        <small>
+          Orders for your products
+        </small>
+      </div>
+
+      <button onclick="loadOrders()">
+        ↻ Refresh Orders
+      </button>
+
+    </div>
+
+
+    <div id="ordersList">
+
+      <div class="emptyOrders">
+        <h3>📦 No orders yet</h3>
+        <p>
+          Customer order karega to yahan dikhega.
+        </p>
+      </div>
+
+    </div>
+
+  </section>
+
 </main>
-<script src="./seller.js"></script>
-</body>
-</html>
+
+
+<!-- ORDER DETAILS MODAL -->
+
+<div
+  id="order
