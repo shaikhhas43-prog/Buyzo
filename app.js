@@ -1,266 +1,63 @@
-/* =========================================================
-   BUYZO CUSTOMER APP.JS
-   Product + Cart + Checkout + Orders + Account
-========================================================= */
-
-const SUPABASE_URL =
-  "https://ahhrhjucbdddcdlzjokg.supabase.co";
-
-const SUPABASE_KEY =
-  "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
-
-const WHATSAPP_NUMBER =
-  "919725231594";
-
-
-/* =========================================================
-   SUPABASE
-========================================================= */
+const SUPABASE_URL = "https://ahhrhjucbdddcdlzjokg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
+const WHATSAPP_NUMBER = "919725231594";
 
 const db = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
 
-
-/* =========================================================
-   GLOBAL
-========================================================= */
-
 let allProducts = [];
 let filteredProducts = [];
-
 let cart = JSON.parse(
   localStorage.getItem("buyzo_cart") || "[]"
 );
-
 let currentOrder = null;
-let currentUser = null;
 
 
-/* =========================================================
+/* =====================================================
    START
-========================================================= */
+===================================================== */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  init
-);
-
-
-async function init() {
-
-  console.log("BUYZO APP STARTING...");
-
-  try {
-
-    const {
-      data,
-      error
-    } = await db.auth.getSession();
-
-    if (error) {
-      console.error("Session error:", error);
-    }
-
-    currentUser =
-      data?.session?.user || null;
-
-  } catch (error) {
-
-    console.error(
-      "Session check failed:",
-      error
-    );
-
-  }
-
-  updateCartCount();
-
-  setupSearch();
-
-  setupCheckout();
-
-  /*
-     Products load independently.
-     Even if auth/session has problem,
-     products page should still attempt loading.
-  */
+document.addEventListener("DOMContentLoaded", () => {
 
   loadProducts();
-
-}
-
-
-/* =========================================================
-   SEARCH SETUP
-========================================================= */
-
-function setupSearch() {
+  updateCartCount();
 
   const search =
     document.getElementById("search");
 
-  if (!search) return;
-
-  search.addEventListener(
-    "keydown",
-    function(e) {
-
+  if (search) {
+    search.addEventListener("keydown", e => {
       if (e.key === "Enter") {
         searchProducts();
       }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   CHECKOUT SETUP
-========================================================= */
-
-function setupCheckout() {
-
-  const form =
-    document.getElementById(
-      "checkoutForm"
-    );
-
-  if (!form) return;
-
-  form.addEventListener(
-    "submit",
-    placeOrder
-  );
-
-}
-
-
-/* =========================================================
-   AUTH SESSION
-========================================================= */
-
-async function getCurrentUser() {
-
-  try {
-
-    const {
-      data,
-      error
-    } = await db.auth.getUser();
-
-    if (error) {
-
-      console.warn(
-        "getUser:",
-        error.message
-      );
-
-      return null;
-    }
-
-    currentUser =
-      data?.user || null;
-
-    return currentUser;
-
-  } catch (error) {
-
-    console.error(
-      "getCurrentUser error:",
-      error
-    );
-
-    return null;
+    });
   }
 
-}
+  const checkoutForm =
+    document.getElementById("checkoutForm");
 
-
-/* =========================================================
-   ENSURE USER ID
-========================================================= */
-
-async function ensureOrderUser() {
-
-  /*
-     First check existing login.
-  */
-
-  let user =
-    await getCurrentUser();
-
-  if (user) {
-    return user;
-  }
-
-
-  /*
-     Customer is not logged in.
-
-     Try anonymous authentication.
-     Supabase Dashboard me Anonymous Sign-Ins
-     enabled hona chahiye.
-  */
-
-  try {
-
-    const {
-      data,
-      error
-    } = await db.auth.signInAnonymously();
-
-    if (error) {
-
-      console.warn(
-        "Anonymous login unavailable:",
-        error.message
-      );
-
-      return null;
-    }
-
-    user =
-      data?.user || null;
-
-    currentUser = user;
-
-    return user;
-
-  } catch (error) {
-
-    console.error(
-      "Anonymous auth error:",
-      error
+  if (checkoutForm) {
+    checkoutForm.addEventListener(
+      "submit",
+      placeOrder
     );
-
-    return null;
   }
 
-}
+});
 
 
-/* =========================================================
+/* =====================================================
    PRODUCTS
-========================================================= */
+===================================================== */
 
 async function loadProducts() {
 
   const grid =
-    document.getElementById(
-      "productGrid"
-    );
+    document.getElementById("productGrid");
 
-  if (!grid) {
-
-    console.warn(
-      "productGrid element not found"
-    );
-
-    return;
-  }
+  if (!grid) return;
 
   grid.innerHTML = `
     <div class="loading">
@@ -268,299 +65,146 @@ async function loadProducts() {
     </div>
   `;
 
-
   try {
 
-    /*
-       Timeout protection.
-    */
-
-    const query =
-      db
-        .from("products")
-        .select(`
-          id,
-          name,
-          category,
-          price,
-          old_price,
-          stock,
-          emoji,
-          image_url,
-          seller_id,
-          created_at
-        `)
-        .order(
-          "created_at",
-          {
-            ascending: false
-          }
-        );
-
-
-    const result =
-      await Promise.race([
-
-        query,
-
-        new Promise(resolve =>
-          setTimeout(
-            () =>
-              resolve({
-                data: null,
-                error: {
-                  message:
-                    "Products request timeout. Supabase/RLS check karo."
-                }
-              }),
-            15000
-          )
-        )
-
-      ]);
-
-
-    const {
-      data,
-      error
-    } = result;
-
+    const { data, error } = await db
+      .from("products")
+      .select(`
+        id,
+        name,
+        category,
+        price,
+        old_price,
+        stock,
+        emoji,
+        image_url,
+        seller_id,
+        created_at
+      `)
+      .order("created_at", {
+        ascending: false
+      });
 
     if (error) {
-
-      console.error(
-        "Products error:",
-        error
-      );
+      console.error(error);
 
       grid.innerHTML = `
         <div class="empty">
-
-          <h3>
-            Products load nahi ho rahe.
-          </h3>
-
-          <p>
-            ${escapeHTML(
-              error.message ||
-              "Unknown Supabase error"
-            )}
-          </p>
-
-          <button
-            onclick="loadProducts()"
-            style="
-              margin-top:12px;
-              padding:10px 18px;
-              border:0;
-              border-radius:8px;
-              cursor:pointer;
-            "
-          >
-            ↻ Try Again
-          </button>
-
+          <h3>Products load nahi ho rahe.</h3>
+          <p>${escapeHTML(error.message)}</p>
         </div>
       `;
 
       return;
     }
 
-
-    allProducts =
-      Array.isArray(data)
-        ? data
-        : [];
-
-    filteredProducts =
-      [...allProducts];
-
-
-    console.log(
-      "BUYZO PRODUCTS:",
-      allProducts
-    );
-
+    allProducts = data || [];
+    filteredProducts = [...allProducts];
 
     renderProducts();
 
+  } catch (err) {
 
-  } catch (error) {
-
-    console.error(
-      "loadProducts crash:",
-      error
-    );
+    console.error(err);
 
     grid.innerHTML = `
       <div class="empty">
-
-        <h3>
-          Something went wrong.
-        </h3>
-
-        <p>
-          ${escapeHTML(
-            error.message ||
-            "Products load failed"
-          )}
-        </p>
-
-        <button
-          onclick="loadProducts()"
-          style="
-            margin-top:12px;
-            padding:10px 18px;
-            border:0;
-            border-radius:8px;
-          "
-        >
-          ↻ Try Again
-        </button>
-
+        <h3>Something went wrong.</h3>
+        <p>${escapeHTML(err.message)}</p>
       </div>
     `;
-
   }
-
 }
 
-window.loadProducts =
-  loadProducts;
 
-
-/* =========================================================
+/* =====================================================
    CATEGORY IMAGE
-========================================================= */
+===================================================== */
 
 function getCategoryImage(category) {
 
   const c =
-    String(category || "")
-      .toLowerCase();
-
+    String(category || "").toLowerCase();
 
   if (c.includes("mobile")) {
-
-    return
-      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800";
-
+    return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800";
   }
-
 
   if (c.includes("fashion")) {
-
-    return
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800";
-
+    return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800";
   }
-
 
   if (c.includes("electronics")) {
-
-    return
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
-
+    return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
   }
-
 
   if (c.includes("home")) {
-
-    return
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800";
-
+    return "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800";
   }
-
 
   if (c.includes("beauty")) {
-
-    return
-      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800";
-
+    return "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800";
   }
-
 
   if (c.includes("sports")) {
-
-    return
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800";
-
+    return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800";
   }
 
-
-  return
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
-
+  return "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
 }
 
 
-/* =========================================================
+/* =====================================================
    PRODUCT IMAGE
-========================================================= */
+===================================================== */
 
 function getProductImage(product) {
 
-  if (
-    product &&
-    product.image_url
-  ) {
-
+  if (product.image_url) {
     return product.image_url;
-
   }
 
   return getCategoryImage(
-    product?.category
+    product.category
   );
-
 }
 
 
-/* =========================================================
+/* =====================================================
    RENDER PRODUCTS
-========================================================= */
+===================================================== */
 
 function renderProducts() {
 
   const grid =
-    document.getElementById(
-      "productGrid"
-    );
+    document.getElementById("productGrid");
 
   if (!grid) return;
-
 
   if (!filteredProducts.length) {
 
     grid.innerHTML = `
       <div class="empty">
-
-        <h3>
-          No products found
-        </h3>
-
+        <h3>No products found</h3>
         <p>
           Is category me product available nahi hai.
         </p>
-
       </div>
     `;
 
     return;
   }
 
-
   grid.innerHTML =
     filteredProducts
       .map(createProductCard)
       .join("");
-
 }
 
 
-/* =========================================================
+/* =====================================================
    PRODUCT CARD
-========================================================= */
+===================================================== */
 
 function createProductCard(product) {
 
@@ -583,9 +227,7 @@ function createProductCard(product) {
         )
       : 0;
 
-
   return `
-
     <article class="productCard">
 
       <div class="productImage">
@@ -600,67 +242,47 @@ function createProductCard(product) {
             : ""
         }
 
-
         <img
           src="${escapeAttr(image)}"
-          alt="${escapeHTML(
-            product.name
-          )}"
+          alt="${escapeHTML(product.name)}"
           loading="lazy"
-
           onerror="
             this.onerror=null;
-            this.src='${escapeAttr(
-              getCategoryImage(
-                product.category
-              )
-            )}';
+            this.src='${getCategoryImage(product.category)}';
           "
         >
 
       </div>
 
-
       <div class="productBody">
 
         <small class="category">
           ${escapeHTML(
-            product.category ||
-            "Other"
+            product.category || "Other"
           )}
         </small>
 
-
         <h3>
-          ${escapeHTML(
-            product.name
-          )}
+          ${escapeHTML(product.name)}
         </h3>
-
 
         <div class="price">
 
           <strong>
-            ₹${price.toLocaleString(
-              "en-IN"
-            )}
+            ₹${price.toLocaleString("en-IN")}
           </strong>
-
 
           ${
             old > price
               ? `
                 <del>
-                  ₹${old.toLocaleString(
-                    "en-IN"
-                  )}
+                  ₹${old.toLocaleString("en-IN")}
                 </del>
               `
               : ""
           }
 
         </div>
-
 
         <div class="stock">
 
@@ -672,16 +294,9 @@ function createProductCard(product) {
 
         </div>
 
-
         <button
           class="addCart"
-
-          onclick="
-            addToCart(
-              ${Number(product.id)}
-            )
-          "
-
+          onclick="addToCart(${Number(product.id)})"
           ${stock <= 0 ? "disabled" : ""}
         >
 
@@ -696,21 +311,17 @@ function createProductCard(product) {
       </div>
 
     </article>
-
   `;
-
 }
 
 
-/* =========================================================
+/* =====================================================
    CATEGORY FILTER
-========================================================= */
+===================================================== */
 
 function filterCat(category) {
 
-  if (
-    category === "All"
-  ) {
+  if (category === "All") {
 
     filteredProducts =
       [...allProducts];
@@ -718,52 +329,39 @@ function filterCat(category) {
   } else {
 
     filteredProducts =
-      allProducts.filter(
-        product =>
-          String(
-            product.category || ""
-          )
+      allProducts.filter(product =>
+        String(product.category || "")
           .toLowerCase()
           .trim() ===
-          String(category)
-            .toLowerCase()
-            .trim()
+        String(category || "")
+          .toLowerCase()
+          .trim()
       );
-
   }
 
-
   renderProducts();
-
 
   document
     .getElementById("products")
     ?.scrollIntoView({
       behavior: "smooth"
     });
-
 }
 
-window.filterCat =
-  filterCat;
 
-
-/* =========================================================
+/* =====================================================
    SEARCH
-========================================================= */
+===================================================== */
 
 function searchProducts() {
 
   const input =
-    document.getElementById(
-      "search"
-    );
+    document.getElementById("search");
 
   const q =
     input?.value
-      ?.trim()
-      ?.toLowerCase() || "";
-
+      .trim()
+      .toLowerCase() || "";
 
   if (!q) {
 
@@ -773,48 +371,36 @@ function searchProducts() {
   } else {
 
     filteredProducts =
-      allProducts.filter(
-        product => {
+      allProducts.filter(product => {
 
-          const name =
-            String(
-              product.name || ""
-            ).toLowerCase();
+        const name =
+          String(product.name || "")
+            .toLowerCase();
 
-          const category =
-            String(
-              product.category || ""
-            ).toLowerCase();
+        const category =
+          String(product.category || "")
+            .toLowerCase();
 
-          return (
-            name.includes(q) ||
-            category.includes(q)
-          );
-
-        }
-      );
-
+        return (
+          name.includes(q) ||
+          category.includes(q)
+        );
+      });
   }
 
-
   renderProducts();
-
 
   document
     .getElementById("products")
     ?.scrollIntoView({
       behavior: "smooth"
     });
-
 }
 
-window.searchProducts =
-  searchProducts;
 
-
-/* =========================================================
+/* =====================================================
    CART
-========================================================= */
+===================================================== */
 
 function addToCart(id) {
 
@@ -825,16 +411,10 @@ function addToCart(id) {
         Number(id)
     );
 
-
   if (!product) {
-
-    alert(
-      "Product nahi mila."
-    );
-
+    alert("Product nahi mila.");
     return;
   }
-
 
   if (!product.seller_id) {
 
@@ -845,10 +425,8 @@ function addToCart(id) {
     return;
   }
 
-
   const stock =
     Number(product.stock || 0);
-
 
   if (stock <= 0) {
 
@@ -859,14 +437,12 @@ function addToCart(id) {
     return;
   }
 
-
   const existing =
     cart.find(
       item =>
         Number(item.id) ===
         Number(id)
     );
-
 
   if (existing) {
 
@@ -882,7 +458,6 @@ function addToCart(id) {
       return;
     }
 
-
     existing.quantity++;
 
   } else {
@@ -894,9 +469,7 @@ function addToCart(id) {
       name: product.name,
 
       price:
-        Number(
-          product.price || 0
-        ),
+        Number(product.price || 0),
 
       image_url:
         product.image_url || "",
@@ -904,35 +477,25 @@ function addToCart(id) {
       seller_id:
         product.seller_id,
 
-      stock: stock,
+      stock:
+        stock,
 
-      quantity: 1
-
+      quantity:
+        1
     });
-
   }
 
-
   saveCart();
-
   updateCartCount();
-
   renderCart();
 
-
-  alert(
-    "✅ Product cart me add ho gaya."
-  );
-
+  alert("Product cart me add ho gaya ✅");
 }
 
-window.addToCart =
-  addToCart;
 
-
-/* =========================================================
+/* =====================================================
    CART COUNT
-========================================================= */
+===================================================== */
 
 function updateCartCount() {
 
@@ -943,30 +506,22 @@ function updateCartCount() {
 
   if (!element) return;
 
-
   const count =
     cart.reduce(
       (sum, item) =>
         sum +
-        Number(
-          item.quantity || 0
-        ),
+        Number(item.quantity || 0),
       0
     );
 
-
   element.textContent =
     count;
-
 }
 
-window.updateCartCount =
-  updateCartCount;
 
-
-/* =========================================================
+/* =====================================================
    SAVE CART
-========================================================= */
+===================================================== */
 
 function saveCart() {
 
@@ -974,34 +529,26 @@ function saveCart() {
     "buyzo_cart",
     JSON.stringify(cart)
   );
-
 }
 
 
-/* =========================================================
+/* =====================================================
    OPEN CART
-========================================================= */
+===================================================== */
 
 function openCart() {
 
   document
-    .getElementById(
-      "cartModal"
-    )
+    .getElementById("cartModal")
     ?.classList.add("show");
 
-
   renderCart();
-
 }
 
-window.openCart =
-  openCart;
 
-
-/* =========================================================
+/* =====================================================
    RENDER CART
-========================================================= */
+===================================================== */
 
 function renderCart() {
 
@@ -1015,36 +562,25 @@ function renderCart() {
       "cartTotal"
     );
 
-
   if (!box) return;
-
 
   if (!cart.length) {
 
     box.innerHTML = `
       <div class="empty">
-
-        <h3>
-          Your cart is empty 🛒
-        </h3>
-
+        <h3>Your cart is empty 🛒</h3>
       </div>
     `;
 
-
     if (totalElement) {
-
       totalElement.textContent =
         "₹0";
-
     }
 
     return;
   }
 
-
   let total = 0;
-
 
   box.innerHTML =
     cart.map(item => {
@@ -1053,9 +589,7 @@ function renderCart() {
         Number(item.price) *
         Number(item.quantity);
 
-
       total += itemTotal;
-
 
       const image =
         item.image_url ||
@@ -1063,70 +597,45 @@ function renderCart() {
           "Fashion"
         );
 
-
       return `
-
         <div class="cartItem">
 
           <img
             src="${escapeAttr(image)}"
-
             onerror="
               this.onerror=null;
-              this.src='${escapeAttr(
-                getCategoryImage(
-                  "Fashion"
-                )
-              )}';
+              this.src='${getCategoryImage("Fashion")}';
             "
           >
-
 
           <div>
 
             <b>
-              ${escapeHTML(
-                item.name
-              )}
+              ${escapeHTML(item.name)}
             </b>
 
-
             <p>
-              ₹${Number(
-                item.price
-              ).toLocaleString(
-                "en-IN"
-              )}
+              ₹${Number(item.price)
+                .toLocaleString("en-IN")}
             </p>
-
 
             <div class="quantity">
 
               <button
                 onclick="
-                  changeQty(
-                    ${Number(item.id)},
-                    -1
-                  )
+                  changeQty(${Number(item.id)}, -1)
                 "
               >
                 −
               </button>
 
-
               <span>
-                ${Number(
-                  item.quantity
-                )}
+                ${item.quantity}
               </span>
-
 
               <button
                 onclick="
-                  changeQty(
-                    ${Number(item.id)},
-                    1
-                  )
+                  changeQty(${Number(item.id)}, 1)
                 "
               >
                 +
@@ -1136,25 +645,19 @@ function renderCart() {
 
           </div>
 
-
           <button
             class="remove"
-
             onclick="
-              removeFromCart(
-                ${Number(item.id)}
-              )
+              removeFromCart(${Number(item.id)})
             "
           >
             ×
           </button>
 
         </div>
-
       `;
 
     }).join("");
-
 
   if (totalElement) {
 
@@ -1163,18 +666,13 @@ function renderCart() {
       total.toLocaleString(
         "en-IN"
       );
-
   }
-
 }
 
-window.renderCart =
-  renderCart;
 
-
-/* =========================================================
+/* =====================================================
    CHANGE QUANTITY
-========================================================= */
+===================================================== */
 
 function changeQty(
   id,
@@ -1188,14 +686,12 @@ function changeQty(
         Number(id)
     );
 
-
   if (!item) return;
-
 
   if (
     change > 0 &&
     Number(item.quantity) >=
-    Number(item.stock || 0)
+      Number(item.stock || 0)
   ) {
 
     alert(
@@ -1205,14 +701,9 @@ function changeQty(
     return;
   }
 
+  item.quantity += change;
 
-  item.quantity +=
-    change;
-
-
-  if (
-    item.quantity <= 0
-  ) {
+  if (item.quantity <= 0) {
 
     cart =
       cart.filter(
@@ -1220,25 +711,17 @@ function changeQty(
           Number(x.id) !==
           Number(id)
       );
-
   }
 
-
   saveCart();
-
   updateCartCount();
-
   renderCart();
-
 }
 
-window.changeQty =
-  changeQty;
 
-
-/* =========================================================
-   REMOVE
-========================================================= */
+/* =====================================================
+   REMOVE FROM CART
+===================================================== */
 
 function removeFromCart(id) {
 
@@ -1249,22 +732,15 @@ function removeFromCart(id) {
         Number(id)
     );
 
-
   saveCart();
-
   updateCartCount();
-
   renderCart();
-
 }
 
-window.removeFromCart =
-  removeFromCart;
 
-
-/* =========================================================
-   START CHECKOUT
-========================================================= */
+/* =====================================================
+   CHECKOUT
+===================================================== */
 
 function startCheckout() {
 
@@ -1277,30 +753,21 @@ function startCheckout() {
     return;
   }
 
-
-  closeModal(
-    "cartModal"
-  );
-
+  closeModal("cartModal");
 
   renderCheckoutSummary();
-
 
   document
     .getElementById(
       "checkoutModal"
     )
     ?.classList.add("show");
-
 }
 
-window.startCheckout =
-  startCheckout;
 
-
-/* =========================================================
+/* =====================================================
    CHECKOUT SUMMARY
-========================================================= */
+===================================================== */
 
 function renderCheckoutSummary() {
 
@@ -1309,12 +776,9 @@ function renderCheckoutSummary() {
       "checkoutItems"
     );
 
-
   if (!box) return;
 
-
   let total = 0;
-
 
   box.innerHTML =
     cart.map(item => {
@@ -1323,58 +787,41 @@ function renderCheckoutSummary() {
         Number(item.price) *
         Number(item.quantity);
 
-
       total += itemTotal;
 
-
       return `
-
         <div class="summaryItem">
 
           <img
             src="${escapeAttr(
               item.image_url ||
-              getCategoryImage(
-                "Fashion"
-              )
+              getCategoryImage("Fashion")
             )}"
           >
-
 
           <div>
 
             <b>
-              ${escapeHTML(
-                item.name
-              )}
+              ${escapeHTML(item.name)}
             </b>
 
             <br>
 
-            ${Number(
-              item.quantity
-            )}
-            × ₹${Number(
-              item.price
-            ).toLocaleString(
-              "en-IN"
-            )}
+            ${Number(item.quantity)}
+            × ₹${Number(item.price)
+              .toLocaleString("en-IN")}
 
           </div>
 
-
           <strong>
-            ₹${itemTotal.toLocaleString(
-              "en-IN"
-            )}
+            ₹${itemTotal
+              .toLocaleString("en-IN")}
           </strong>
 
         </div>
-
       `;
 
     }).join("");
-
 
   const subtotal =
     document.getElementById(
@@ -1386,39 +833,73 @@ function renderCheckoutSummary() {
       "checkoutTotal"
     );
 
-
   if (subtotal) {
-
     subtotal.textContent =
       "₹" +
       total.toLocaleString(
         "en-IN"
       );
-
   }
 
-
   if (checkoutTotal) {
-
     checkoutTotal.textContent =
       "₹" +
       total.toLocaleString(
         "en-IN"
       );
-
   }
-
 }
 
 
-/* =========================================================
+/* =====================================================
+   GET / CREATE USER
+===================================================== */
+
+async function getOrderUser() {
+
+  const {
+    data: {
+      user
+    }
+  } = await db.auth.getUser();
+
+  if (user) {
+    return user;
+  }
+
+  /*
+    Customer login nahi hai.
+    Anonymous sign-in try karenge.
+  */
+
+  const {
+    data,
+    error
+  } = await db.auth.signInAnonymously();
+
+  if (error) {
+
+    console.error(
+      "Anonymous login error:",
+      error
+    );
+
+    throw new Error(
+      "Customer user create nahi ho saka. Supabase me Anonymous Sign-ins ON karo."
+    );
+  }
+
+  return data.user;
+}
+
+
+/* =====================================================
    PLACE ORDER
-========================================================= */
+===================================================== */
 
 async function placeOrder(e) {
 
   e.preventDefault();
-
 
   if (!cart.length) {
 
@@ -1429,48 +910,46 @@ async function placeOrder(e) {
     return;
   }
 
-
   const name =
     document
       .getElementById("coName")
       ?.value
-      ?.trim() || "";
-
+      .trim();
 
   const mobile =
     document
       .getElementById("coMobile")
       ?.value
-      ?.trim() || "";
-
+      .trim();
 
   const address =
     document
       .getElementById("coAddress")
       ?.value
-      ?.trim() || "";
-
+      .trim();
 
   const city =
     document
       .getElementById("coCity")
       ?.value
-      ?.trim() || "";
-
+      .trim();
 
   const state =
     document
       .getElementById("coState")
       ?.value
-      ?.trim() || "";
-
+      .trim();
 
   const pincode =
     document
       .getElementById("coPincode")
       ?.value
-      ?.trim() || "";
+      .trim();
 
+
+  /* =========================
+     VALIDATION
+  ========================= */
 
   if (
     !name ||
@@ -1486,7 +965,6 @@ async function placeOrder(e) {
     return;
   }
 
-
   if (
     !/^\d{10}$/.test(
       mobile
@@ -1499,7 +977,6 @@ async function placeOrder(e) {
 
     return;
   }
-
 
   if (
     !/^\d{6}$/.test(
@@ -1515,6 +992,40 @@ async function placeOrder(e) {
   }
 
 
+  /* =========================
+     GET USER ID
+  ========================= */
+
+  let user;
+
+  try {
+
+    user =
+      await getOrderUser();
+
+  } catch (err) {
+
+    alert(
+      err.message
+    );
+
+    return;
+  }
+
+  if (!user || !user.id) {
+
+    alert(
+      "Customer user ID nahi mila."
+    );
+
+    return;
+  }
+
+
+  /* =========================
+     TOTAL
+  ========================= */
+
   const total =
     cart.reduce(
       (sum, item) =>
@@ -1525,31 +1036,9 @@ async function placeOrder(e) {
     );
 
 
-  /*
-     IMPORTANT:
-     Get a valid Supabase user.
-     This fixes orders.user_id NULL.
-  */
-
-  const user =
-    await ensureOrderUser();
-
-
-  if (!user) {
-
-    alert(
-      "Order save nahi ho pa raha. Supabase Anonymous Sign-Ins enable karo ya Account se login karo."
-    );
-
-    return;
-  }
-
-
-  console.log(
-    "ORDER USER ID:",
-    user.id
-  );
-
+  /* =========================
+     ORDER ID
+  ========================= */
 
   const orderId =
     "BZ" +
@@ -1557,6 +1046,10 @@ async function placeOrder(e) {
       .toString()
       .slice(-8);
 
+
+  /* =========================
+     CURRENT ORDER
+  ========================= */
 
   currentOrder = {
 
@@ -1586,90 +1079,99 @@ async function placeOrder(e) {
       ),
 
     total
-
   };
 
 
-  /*
+  /* =========================
      CREATE ORDER ROWS
-  */
+  ========================= */
 
   const rows =
-    cart.map(item => ({
+    cart.map(item => {
 
-      /*
-         FIX:
-         user_id is now ALWAYS supplied.
-      */
+      const itemPrice =
+        Number(item.price || 0);
 
-      user_id:
-        user.id,
+      const quantity =
+        Number(item.quantity || 1);
 
-      seller_id:
-        item.seller_id,
+      return {
 
-      product_id:
-        item.id,
+        /*
+          IMPORTANT:
+          orders.user_id is NOT NULL
+        */
+        user_id:
+          user.id,
 
-      product_name:
-        item.name,
+        seller_id:
+          item.seller_id,
 
-      image_url:
-        item.image_url ||
-        null,
+        product_id:
+          item.id,
 
-      unit_price:
-        Number(item.price),
+        product_name:
+          item.name,
 
-      customer_name:
-        name,
+        image_url:
+          item.image_url || null,
 
-      mobile:
-        mobile,
+        /*
+          IMPORTANT:
+          Your orders table requires "price"
+        */
+        price:
+          itemPrice,
 
-      address:
-        address,
+        customer_name:
+          name,
 
-      city:
-        city,
+        mobile:
+          mobile,
 
-      state:
-        state,
+        address:
+          address,
 
-      pincode:
-        pincode,
+        city:
+          city,
 
-      quantity:
-        Number(item.quantity),
+        state:
+          state,
 
-      payment_method:
-        "Cash on Delivery",
+        pincode:
+          pincode,
 
-      status:
-        "New",
+        quantity:
+          quantity,
 
-      order_no:
-        orderId,
+        payment_method:
+          "Cash on Delivery",
 
-      total:
-        Number(item.price) *
-        Number(item.quantity)
+        status:
+          "New",
 
-    }));
+        order_no:
+          orderId,
+
+        total:
+          itemPrice * quantity
+      };
+
+    });
 
 
   console.log(
-    "SAVING ORDERS:",
+    "BUYZO ORDER ROWS:",
     rows
   );
 
 
-  /*
-     INSERT ORDERS
-  */
+  /* =========================
+     SAVE ORDER
+  ========================= */
 
   const {
-    data,
+    data: insertedOrders,
     error
   } = await db
     .from("orders")
@@ -1677,52 +1179,89 @@ async function placeOrder(e) {
     .select();
 
 
+  /* =========================
+     ERROR
+  ========================= */
+
   if (error) {
 
     console.error(
-      "ORDER SAVE ERROR:",
+      "Order save error:",
       error
     );
-
 
     alert(
       "Order save nahi hua:\n\n" +
       error.message
     );
 
-
     return;
   }
 
 
   console.log(
-    "ORDER SAVED:",
-    data
+    "Order saved:",
+    insertedOrders
   );
 
 
-  /*
-     SUCCESS
-  */
+  /* =========================
+     REDUCE STOCK
+  ========================= */
+
+  for (const item of cart) {
+
+    try {
+
+      const newStock =
+        Math.max(
+          0,
+          Number(item.stock || 0) -
+          Number(item.quantity || 0)
+        );
+
+      await db
+        .from("products")
+        .update({
+          stock: newStock
+        })
+        .eq(
+          "id",
+          item.id
+        );
+
+    } catch (stockError) {
+
+      console.error(
+        "Stock update error:",
+        stockError
+      );
+    }
+  }
+
+
+  /* =========================
+     CLOSE CHECKOUT
+  ========================= */
 
   closeModal(
     "checkoutModal"
   );
 
 
+  /* =========================
+     SUCCESS MESSAGE
+  ========================= */
+
   const successText =
     document.getElementById(
       "successText"
     );
 
-
   if (successText) {
 
     successText.textContent =
-      `Order #${orderId} — Total ₹${total.toLocaleString(
-        "en-IN"
-      )}.`;
-
+      `Order #${orderId} — Total ₹${total.toLocaleString("en-IN")}.`;
   }
 
 
@@ -1731,36 +1270,33 @@ async function placeOrder(e) {
       "successModal"
     )
     ?.classList.add("show");
-
 }
 
-window.placeOrder =
-  placeOrder;
 
-
-/* =========================================================
+/* =====================================================
    WHATSAPP
-========================================================= */
+===================================================== */
 
 function sendOrderWhatsApp() {
 
-  if (!currentOrder) return;
-
+  if (!currentOrder) {
+    return;
+  }
 
   const order =
     currentOrder;
 
-
   const items =
     order.items
-      .map(
-        item =>
-          `• ${item.name} × ${item.quantity} = ₹${(
+      .map(item =>
+        `• ${item.name} × ${item.quantity} = ₹${
+          (
             Number(item.price) *
             Number(item.quantity)
           ).toLocaleString(
             "en-IN"
-          )}`
+          )
+        }`
       )
       .join("\n");
 
@@ -1796,16 +1332,12 @@ Total: ₹${order.total.toLocaleString(
     encodeURIComponent(
       message
     );
-
 }
 
-window.sendOrderWhatsApp =
-  sendOrderWhatsApp;
 
-
-/* =========================================================
+/* =====================================================
    FINISH ORDER
-========================================================= */
+===================================================== */
 
 function finishOrder() {
 
@@ -1821,15 +1353,17 @@ function finishOrder() {
     "successModal"
   );
 
+  /*
+    Products dobara load:
+    stock updated dikhega.
+  */
+  loadProducts();
 }
 
-window.finishOrder =
-  finishOrder;
 
-
-/* =========================================================
+/* =====================================================
    ACCOUNT
-========================================================= */
+===================================================== */
 
 function openAccount() {
 
@@ -1839,18 +1373,13 @@ function openAccount() {
     )
     ?.classList.add("show");
 
-
   loginForm();
-
 }
 
-window.openAccount =
-  openAccount;
 
-
-/* =========================================================
+/* =====================================================
    LOGIN FORM
-========================================================= */
+===================================================== */
 
 function loginForm() {
 
@@ -1859,9 +1388,7 @@ function loginForm() {
       "accountForm"
     );
 
-
   if (!form) return;
-
 
   form.innerHTML = `
 
@@ -1871,13 +1398,11 @@ function loginForm() {
       placeholder="Email"
     >
 
-
     <input
       id="accountPassword"
       type="password"
       placeholder="Password"
     >
-
 
     <button
       type="button"
@@ -1889,20 +1414,13 @@ function loginForm() {
 
   `;
 
-
-  setTab(
-    "login"
-  );
-
+  setTab("login");
 }
 
-window.loginForm =
-  loginForm;
 
-
-/* =========================================================
+/* =====================================================
    SIGNUP FORM
-========================================================= */
+===================================================== */
 
 function signupForm() {
 
@@ -1911,9 +1429,7 @@ function signupForm() {
       "accountForm"
     );
 
-
   if (!form) return;
-
 
   form.innerHTML = `
 
@@ -1923,13 +1439,11 @@ function signupForm() {
       placeholder="Email"
     >
 
-
     <input
       id="accountPassword"
       type="password"
       placeholder="Password"
     >
-
 
     <button
       type="button"
@@ -1941,48 +1455,35 @@ function signupForm() {
 
   `;
 
-
-  setTab(
-    "signup"
-  );
-
+  setTab("signup");
 }
 
-window.signupForm =
-  signupForm;
 
-
-/* =========================================================
-   ACCOUNT TABS
-========================================================= */
+/* =====================================================
+   TABS
+===================================================== */
 
 function setTab(tab) {
 
   document
-    .getElementById(
-      "loginTab"
-    )
+    .getElementById("loginTab")
     ?.classList.toggle(
       "selected",
       tab === "login"
     );
 
-
   document
-    .getElementById(
-      "signupTab"
-    )
+    .getElementById("signupTab")
     ?.classList.toggle(
       "selected",
       tab === "signup"
     );
-
 }
 
 
-/* =========================================================
+/* =====================================================
    LOGIN
-========================================================= */
+===================================================== */
 
 async function doLogin() {
 
@@ -1992,8 +1493,7 @@ async function doLogin() {
         "accountEmail"
       )
       ?.value
-      ?.trim();
-
+      .trim();
 
   const password =
     document
@@ -2002,99 +1502,47 @@ async function doLogin() {
       )
       ?.value;
 
-
   const msg =
     document.getElementById(
       "accountMsg"
     );
 
-
-  if (
-    !email ||
-    !password
-  ) {
-
-    if (msg) {
-
-      msg.textContent =
-        "Email aur password required hai.";
-
-    }
-
-    return;
-  }
-
-
-  if (msg) {
-
-    msg.textContent =
-      "⏳ Login ho raha hai...";
-
-  }
-
-
   const {
-    data,
     error
   } =
     await db.auth.signInWithPassword({
-
       email,
-
       password
-
     });
-
 
   if (error) {
 
-    console.error(
-      "Login error:",
-      error
-    );
-
-
     if (msg) {
-
       msg.textContent =
-        "❌ " +
         error.message;
-
     }
 
     return;
   }
 
-
-  currentUser =
-    data?.user || null;
-
-
   if (msg) {
-
     msg.textContent =
-      "✅ Login successful!";
-
+      "Login successful ✅";
   }
 
+  setTimeout(() => {
 
-  setTimeout(
-    () =>
-      closeModal(
-        "accountModal"
-      ),
-    500
-  );
+    closeModal(
+      "accountModal"
+    );
 
+  }, 500);
 }
 
-window.doLogin =
-  doLogin;
 
-
-/* =========================================================
+/* =====================================================
    SIGNUP
-========================================================= */
+===================================================== */
 
 async function doSignup() {
 
@@ -2104,8 +1552,7 @@ async function doSignup() {
         "accountEmail"
       )
       ?.value
-      ?.trim();
-
+      .trim();
 
   const password =
     document
@@ -2114,90 +1561,62 @@ async function doSignup() {
       )
       ?.value;
 
-
   const msg =
     document.getElementById(
       "accountMsg"
     );
 
-
-  if (
-    !email ||
-    !password
-  ) {
+  if (!email || !password) {
 
     if (msg) {
 
       msg.textContent =
         "Email aur password required hai.";
-
     }
 
     return;
   }
 
-
-  if (
-    password.length < 6
-  ) {
+  if (password.length < 6) {
 
     if (msg) {
 
       msg.textContent =
         "Password minimum 6 characters ka hona chahiye.";
-
     }
 
     return;
   }
 
-
   const {
-    data,
     error
   } =
     await db.auth.signUp({
-
       email,
-
       password
-
     });
-
 
   if (error) {
 
     if (msg) {
-
       msg.textContent =
         error.message;
-
     }
 
     return;
   }
 
-
-  currentUser =
-    data?.user || null;
-
-
   if (msg) {
 
     msg.textContent =
-      "✅ Account created. Email verify karo.";
-
+      "Account created. Email verify karo.";
   }
-
 }
 
-window.doSignup =
-  doSignup;
 
-
-/* =========================================================
+/* =====================================================
    CLOSE MODAL
-========================================================= */
+===================================================== */
 
 function closeModal(id) {
 
@@ -2206,111 +1625,38 @@ function closeModal(id) {
     ?.classList.remove(
       "show"
     );
-
 }
 
-window.closeModal =
-  closeModal;
 
-
-/* =========================================================
-   AUTH STATE
-========================================================= */
-
-db.auth.onAuthStateChange(
-  function(
-    event,
-    session
-  ) {
-
-    currentUser =
-      session?.user ||
-      null;
-
-
-    console.log(
-      "AUTH:",
-      event,
-      currentUser?.id
-    );
-
-  }
-);
-
-
-/* =========================================================
-   SECURITY HELPERS
-========================================================= */
+/* =====================================================
+   ESCAPE HTML
+===================================================== */
 
 function escapeHTML(value) {
 
-  return String(
-    value ?? ""
-  )
+  return String(value ?? "")
     .replace(
       /[&<>"']/g,
-      char =>
-        ({
-          "&":
-            "&amp;",
-          "<":
-            "&lt;",
-          ">":
-            "&gt;",
-          '"':
-            "&quot;",
-          "'":
-            "&#039;"
-        }[char])
+      char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char])
     );
-
 }
 
 
+/* =====================================================
+   ESCAPE ATTRIBUTE
+===================================================== */
+
 function escapeAttr(value) {
 
-  return escapeHTML(
-    value
-  )
+  return escapeHTML(value)
     .replace(
       /`/g,
       "&#096;"
     );
-
 }
-
-
-/* =========================================================
-   GLOBAL ERROR HANDLER
-========================================================= */
-
-window.addEventListener(
-  "error",
-  function(event) {
-
-    console.error(
-      "BUYZO JS ERROR:",
-      event.error ||
-      event.message
-    );
-
-  }
-);
-
-
-window.addEventListener(
-  "unhandledrejection",
-  function(event) {
-
-    console.error(
-      "BUYZO PROMISE ERROR:",
-      event.reason
-    );
-
-  }
-);
-
-
-console.log(
-  "✅ BUYZO app.js loaded successfully"
-);
