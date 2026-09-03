@@ -48,53 +48,86 @@ document.addEventListener("DOMContentLoaded", () => {
 /* =========================
    PRODUCTS
 ========================= */
-
 async function loadProducts() {
 
-  const grid =
-    document.getElementById("productGrid");
+  const grid = document.getElementById("productGrid");
 
-  if (!grid) return;
-
-  grid.innerHTML =
-    `<div class="loading">Loading BUYZO products...</div>`;
-
-  const { data, error } = await db
-    .from("products")
-    .select(`
-      id,
-      name,
-      category,
-      price,
-      old_price,
-      stock,
-      emoji,
-      image_url,
-      seller_id,
-      created_at
-    `)
-    .order("created_at", {
-      ascending: false
-    });
-
-  if (error) {
-
-    console.error(error);
-
-    grid.innerHTML = `
-      <div class="empty">
-        <h3>Products load nahi ho rahe.</h3>
-        <p>${escapeHTML(error.message)}</p>
-      </div>
-    `;
-
+  if (!grid) {
+    console.error("productGrid element nahi mila.");
     return;
   }
 
-  allProducts = data || [];
-  filteredProducts = [...allProducts];
+  grid.innerHTML = `
+    <div class="loading">
+      Loading BUYZO products...
+    </div>
+  `;
 
-  renderProducts();
+  try {
+
+    const { data, error } = await db
+      .from("products")
+      .select(`
+        id,
+        name,
+        category,
+        price,
+        old_price,
+        stock,
+        emoji,
+        image_url,
+        seller_id,
+        created_at
+      `)
+      .order("created_at", {
+        ascending: false
+      });
+
+    console.log("PRODUCT DATA:", data);
+    console.log("PRODUCT ERROR:", error);
+
+    if (error) {
+
+      console.error("Products load error:", error);
+
+      grid.innerHTML = `
+        <div class="empty">
+          <h3>❌ Products load nahi ho rahe</h3>
+          <p>
+            ${escapeHTML(error.message)}
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    allProducts = Array.isArray(data)
+      ? data
+      : [];
+
+    filteredProducts = [...allProducts];
+
+    renderProducts();
+
+  } catch (err) {
+
+    console.error(
+      "PRODUCT EXCEPTION:",
+      err
+    );
+
+    grid.innerHTML = `
+      <div class="empty">
+        <h3>❌ Products load error</h3>
+        <p>
+          ${escapeHTML(
+            err.message || "Unknown error"
+          )}
+        </p>
+      </div>
+    `;
+  }
 }
 
 
