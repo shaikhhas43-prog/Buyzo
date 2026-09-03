@@ -1,106 +1,80 @@
-const SUPABASE_URL =
-  "https://ahhrhjucbdddcdlzjokg.supabase.co";
+const SUPABASE_URL = "https://ahhrhjucbdddcdlzjokg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
+const WHATSAPP_NUMBER = "919725231594";
 
-const SUPABASE_KEY =
-  "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
-
-const WHATSAPP_NUMBER =
-  "919725231594";
-
-const db =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
-
-
-/* =========================
-   GLOBAL
-========================= */
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
 let allProducts = [];
 let filteredProducts = [];
 
-let cart =
-  JSON.parse(
-    localStorage.getItem("buyzo_cart") || "[]"
-  );
-
-let currentOrder = null;
-let placingOrder = false;
-
-
-/* =========================
-   START
-========================= */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    console.log("BUYZO APP STARTED");
-
-    loadProducts();
-
-    updateCartCount();
-
-    const search =
-      document.getElementById("search");
-
-    if (search) {
-
-      search.addEventListener(
-        "keydown",
-        function (e) {
-
-          if (e.key === "Enter") {
-            searchProducts();
-          }
-
-        }
-      );
-
-    }
-
-
-    const checkoutForm =
-      document.getElementById(
-        "checkoutForm"
-      );
-
-    if (checkoutForm) {
-
-      checkoutForm.addEventListener(
-        "submit",
-        placeOrder
-      );
-
-    }
-
-  }
+let cart = JSON.parse(
+  localStorage.getItem("buyzo_cart") || "[]"
 );
 
+let currentOrder = null;
 
-/* =========================
+
+/* =====================================================
+   START
+===================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  console.log("BUYZO started");
+
+  loadProducts();
+  updateCartCount();
+
+  const search =
+    document.getElementById("search");
+
+  if (search) {
+
+    search.addEventListener("keydown", e => {
+
+      if (e.key === "Enter") {
+        searchProducts();
+      }
+
+    });
+
+  }
+
+  const checkoutForm =
+    document.getElementById("checkoutForm");
+
+  if (checkoutForm) {
+
+    checkoutForm.addEventListener(
+      "submit",
+      placeOrder
+    );
+
+  }
+
+});
+
+
+/* =====================================================
    PRODUCTS
-========================= */
+===================================================== */
 
 async function loadProducts() {
 
   const grid =
-    document.getElementById(
-      "productGrid"
-    );
+    document.getElementById("productGrid");
 
   if (!grid) {
 
     console.error(
-      "productGrid nahi mila."
+      "productGrid element not found"
     );
 
     return;
   }
-
 
   grid.innerHTML = `
     <div class="loading">
@@ -108,49 +82,55 @@ async function loadProducts() {
     </div>
   `;
 
-
   try {
+
+    console.log(
+      "Connecting to Supabase..."
+    );
+
+    const result = await Promise.race([
+
+      db
+        .from("products")
+        .select(`
+          id,
+          name,
+          category,
+          price,
+          old_price,
+          stock,
+          emoji,
+          image_url,
+          seller_id,
+          created_at
+        `)
+        .order("created_at", {
+          ascending: false
+        }),
+
+      new Promise(resolve =>
+        setTimeout(() =>
+          resolve({
+            data: null,
+            error: {
+              message:
+                "Supabase request timeout. Check your Supabase URL, key or RLS policy."
+            }
+          }),
+        15000)
+      )
+
+    ]);
 
     const {
       data,
       error
-    } = await db
-      .from("products")
-      .select(`
-        id,
-        name,
-        category,
-        price,
-        old_price,
-        stock,
-        emoji,
-        image_url,
-        seller_id,
-        created_at
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
-
-
-    console.log(
-      "PRODUCT DATA:",
-      data
-    );
-
-    console.log(
-      "PRODUCT ERROR:",
-      error
-    );
-
+    } = result;
 
     if (error) {
 
       console.error(
-        "PRODUCT LOAD ERROR:",
+        "PRODUCT ERROR:",
         error
       );
 
@@ -158,19 +138,27 @@ async function loadProducts() {
         <div class="empty">
 
           <h3>
-            ❌ Products load nahi ho rahe
+            ⚠️ Products load nahi ho rahe
           </h3>
 
           <p>
             ${escapeHTML(
-              error.message
+              error.message ||
+              "Unknown Supabase error"
             )}
           </p>
 
           <button
             onclick="loadProducts()"
+            style="
+              margin-top:15px;
+              padding:12px 20px;
+              border:0;
+              border-radius:8px;
+              cursor:pointer;
+            "
           >
-            ↻ Try Again
+            🔄 Try Again
           </button>
 
         </div>
@@ -179,52 +167,49 @@ async function loadProducts() {
       return;
     }
 
-
-    allProducts =
-      Array.isArray(data)
-        ? data
-        : [];
-
+    allProducts = data || [];
 
     filteredProducts =
       [...allProducts];
 
-
     console.log(
-      "TOTAL PRODUCTS:",
-      allProducts.length
+      "Products loaded:",
+      allProducts
     );
 
-
     renderProducts();
-
 
   } catch (err) {
 
     console.error(
-      "PRODUCT EXCEPTION:",
+      "Unexpected product error:",
       err
     );
-
 
     grid.innerHTML = `
       <div class="empty">
 
         <h3>
-          ❌ Connection error
+          ⚠️ Something went wrong
         </h3>
 
         <p>
           ${escapeHTML(
             err.message ||
-            "Unknown error"
+            "Unable to load products"
           )}
         </p>
 
         <button
           onclick="loadProducts()"
+          style="
+            margin-top:15px;
+            padding:12px 20px;
+            border:0;
+            border-radius:8px;
+          "
         >
-          ↻ Try Again
+          🔄 Try Again
         </button>
 
       </div>
@@ -235,96 +220,72 @@ async function loadProducts() {
 }
 
 
-/* =========================
+/* =====================================================
    CATEGORY IMAGE
-========================= */
+===================================================== */
 
-function getCategoryImage(
-  category
-) {
+function getCategoryImage(category) {
 
   const c =
-    String(
-      category || ""
-    ).toLowerCase();
+    String(category || "")
+      .toLowerCase();
 
-
-  if (
-    c.includes("mobile")
-  ) {
+  if (c.includes("mobile")) {
 
     return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800";
 
   }
 
-
-  if (
-    c.includes("fashion")
-  ) {
+  if (c.includes("fashion")) {
 
     return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800";
 
   }
 
-
-  if (
-    c.includes("electronics")
-  ) {
+  if (c.includes("electronics")) {
 
     return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
 
   }
 
-
-  if (
-    c.includes("home")
-  ) {
+  if (c.includes("home")) {
 
     return "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800";
 
   }
 
-
-  if (
-    c.includes("beauty")
-  ) {
+  if (c.includes("beauty")) {
 
     return "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800";
 
   }
 
-
-  if (
-    c.includes("sports")
-  ) {
+  if (c.includes("sports")) {
 
     return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800";
 
   }
-
 
   return "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
 
 }
 
 
-/* =========================
+/* =====================================================
    PRODUCT IMAGE
-========================= */
+===================================================== */
 
-function getProductImage(
-  product
-) {
+function getProductImage(product) {
 
   if (
     product &&
-    product.image_url
+    product.image_url &&
+    String(product.image_url).trim()
   ) {
 
     return product.image_url;
 
   }
-
 
   return getCategoryImage(
     product?.category
@@ -333,9 +294,9 @@ function getProductImage(
 }
 
 
-/* =========================
+/* =====================================================
    RENDER PRODUCTS
-========================= */
+===================================================== */
 
 function renderProducts() {
 
@@ -346,20 +307,17 @@ function renderProducts() {
 
   if (!grid) return;
 
-
-  if (
-    !filteredProducts.length
-  ) {
+  if (!filteredProducts.length) {
 
     grid.innerHTML = `
       <div class="empty">
 
         <h3>
-          No products found
+          🛍️ No products found
         </h3>
 
         <p>
-          Is category me product available nahi hai.
+          Abhi is category me product available nahi hai.
         </p>
 
       </div>
@@ -368,144 +326,97 @@ function renderProducts() {
     return;
   }
 
-
   grid.innerHTML =
     filteredProducts
-      .map(
-        createProductCard
-      )
+      .map(createProductCard)
       .join("");
 
 }
 
 
-/* =========================
+/* =====================================================
    PRODUCT CARD
-========================= */
+===================================================== */
 
-function createProductCard(
-  product
-) {
+function createProductCard(product) {
 
   const price =
-    Number(
-      product.price || 0
-    );
-
+    Number(product.price || 0);
 
   const old =
-    Number(
-      product.old_price || 0
-    );
-
+    Number(product.old_price || 0);
 
   const stock =
-    Number(
-      product.stock || 0
-    );
-
+    Number(product.stock || 0);
 
   const image =
-    getProductImage(
-      product
-    );
-
-
-  const fallback =
-    getCategoryImage(
-      product.category
-    );
-
+    getProductImage(product);
 
   const discount =
     old > price
       ? Math.round(
-          (
-            (old - price) /
-            old
-          ) * 100
+          ((old - price) / old) * 100
         )
       : 0;
 
-
   return `
-    <article
-      class="productCard"
-    >
+    <article class="productCard">
 
-      <div
-        class="productImage"
-      >
+      <div class="productImage">
 
         ${
           discount
             ? `
-              <span
-                class="discount"
-              >
+              <span class="discount">
                 ${discount}% OFF
               </span>
             `
             : ""
         }
 
-
         <img
           src="${escapeAttr(image)}"
-          alt="${escapeHTML(
-            product.name
-          )}"
+          alt="${escapeHTML(product.name)}"
           loading="lazy"
           onerror="
             this.onerror=null;
             this.src='${escapeAttr(
-              fallback
+              getCategoryImage(
+                product.category
+              )
             )}';
           "
         >
 
       </div>
 
+      <div class="productBody">
 
-      <div
-        class="productBody"
-      >
-
-        <small
-          class="category"
-        >
+        <small class="category">
           ${escapeHTML(
             product.category ||
             "Other"
           )}
         </small>
 
-
         <h3>
           ${escapeHTML(
-            product.name
+            product.name ||
+            "Product"
           )}
         </h3>
 
-
-        <div
-          class="price"
-        >
+        <div class="price">
 
           <strong>
-            ₹${price.toLocaleString(
-              "en-IN"
-            )}
+            ₹${price.toLocaleString("en-IN")}
           </strong>
-
 
           ${
             old > price
               ? `
                 <del>
-                  ₹${old.toLocaleString(
-                    "en-IN"
-                  )}
+                  ₹${old.toLocaleString("en-IN")}
                 </del>
               `
               : ""
@@ -513,36 +424,20 @@ function createProductCard(
 
         </div>
 
-
-        <div
-          class="stock"
-        >
+        <div class="stock">
 
           ${
             stock > 0
-              ? `
-                ✓ In stock (${stock})
-              `
-              : `
-                ✕ Out of stock
-              `
+              ? `✓ In stock (${stock})`
+              : `✕ Out of stock`
           }
 
         </div>
 
-
         <button
           class="addCart"
-          onclick="
-            addToCart(
-              ${Number(product.id)}
-            )
-          "
-          ${
-            stock <= 0
-              ? "disabled"
-              : ""
-          }
+          onclick="addToCart(${Number(product.id)})"
+          ${stock <= 0 ? "disabled" : ""}
         >
 
           ${
@@ -561,17 +456,13 @@ function createProductCard(
 }
 
 
-/* =========================
+/* =====================================================
    CATEGORY FILTER
-========================= */
+===================================================== */
 
-function filterCat(
-  category
-) {
+function filterCat(category) {
 
-  if (
-    category === "All"
-  ) {
+  if (category === "All") {
 
     filteredProducts =
       [...allProducts];
@@ -579,34 +470,24 @@ function filterCat(
   } else {
 
     filteredProducts =
-      allProducts.filter(
-        product => {
+      allProducts.filter(product =>
 
-          return String(
-            product.category ||
-            ""
-          )
-            .toLowerCase()
-            .trim() ===
-            String(
-              category
-            )
-              .toLowerCase()
-              .trim();
+        String(product.category || "")
+          .toLowerCase()
+          .trim() ===
 
-        }
+        String(category || "")
+          .toLowerCase()
+          .trim()
+
       );
 
   }
 
-
   renderProducts();
 
-
   document
-    .getElementById(
-      "products"
-    )
+    .getElementById("products")
     ?.scrollIntoView({
       behavior: "smooth"
     });
@@ -614,9 +495,9 @@ function filterCat(
 }
 
 
-/* =========================
+/* =====================================================
    SEARCH
-========================= */
+===================================================== */
 
 function searchProducts() {
 
@@ -625,13 +506,10 @@ function searchProducts() {
       "search"
     );
 
-
   const q =
     input?.value
       .trim()
-      .toLowerCase() ||
-    "";
-
+      .toLowerCase() || "";
 
   if (!q) {
 
@@ -641,43 +519,31 @@ function searchProducts() {
   } else {
 
     filteredProducts =
-      allProducts.filter(
-        product => {
+      allProducts.filter(product => {
 
-          const name =
-            String(
-              product.name ||
-              ""
-            )
-              .toLowerCase();
+        const name =
+          String(
+            product.name || ""
+          ).toLowerCase();
 
+        const category =
+          String(
+            product.category || ""
+          ).toLowerCase();
 
-          const category =
-            String(
-              product.category ||
-              ""
-            )
-              .toLowerCase();
+        return (
+          name.includes(q) ||
+          category.includes(q)
+        );
 
-
-          return (
-            name.includes(q) ||
-            category.includes(q)
-          );
-
-        }
-      );
+      });
 
   }
 
-
   renderProducts();
 
-
   document
-    .getElementById(
-      "products"
-    )
+    .getElementById("products")
     ?.scrollIntoView({
       behavior: "smooth"
     });
@@ -685,13 +551,11 @@ function searchProducts() {
 }
 
 
-/* =========================
+/* =====================================================
    CART
-========================= */
+===================================================== */
 
-function addToCart(
-  id
-) {
+function addToCart(id) {
 
   const product =
     allProducts.find(
@@ -699,7 +563,6 @@ function addToCart(
         Number(p.id) ===
         Number(id)
     );
-
 
   if (!product) {
 
@@ -710,22 +573,8 @@ function addToCart(
     return;
   }
 
-
-  if (!product.seller_id) {
-
-    alert(
-      "Is product ka seller available nahi hai."
-    );
-
-    return;
-  }
-
-
   const stock =
-    Number(
-      product.stock || 0
-    );
-
+    Number(product.stock || 0);
 
   if (stock <= 0) {
 
@@ -736,7 +585,6 @@ function addToCart(
     return;
   }
 
-
   const existing =
     cart.find(
       item =>
@@ -744,13 +592,11 @@ function addToCart(
         Number(id)
     );
 
-
   if (existing) {
 
     if (
-      Number(
-        existing.quantity
-      ) >= stock
+      Number(existing.quantity) >=
+      stock
     ) {
 
       alert(
@@ -760,30 +606,25 @@ function addToCart(
       return;
     }
 
-
     existing.quantity++;
 
   } else {
 
     cart.push({
 
-      id:
-        product.id,
+      id: product.id,
 
       name:
         product.name,
 
       price:
-        Number(
-          product.price || 0
-        ),
+        Number(product.price || 0),
 
       image_url:
-        product.image_url ||
-        "",
+        product.image_url || "",
 
       seller_id:
-        product.seller_id,
+        product.seller_id || null,
 
       stock:
         stock,
@@ -795,7 +636,6 @@ function addToCart(
 
   }
 
-
   saveCart();
 
   updateCartCount();
@@ -805,9 +645,9 @@ function addToCart(
 }
 
 
-/* =========================
+/* =====================================================
    CART COUNT
-========================= */
+===================================================== */
 
 function updateCartCount() {
 
@@ -816,16 +656,11 @@ function updateCartCount() {
       "cartCount"
     );
 
-
   if (!element) return;
-
 
   const count =
     cart.reduce(
-      (
-        sum,
-        item
-      ) =>
+      (sum, item) =>
         sum +
         Number(
           item.quantity || 0
@@ -833,16 +668,15 @@ function updateCartCount() {
       0
     );
 
-
   element.textContent =
     count;
 
 }
 
 
-/* =========================
+/* =====================================================
    SAVE CART
-========================= */
+===================================================== */
 
 function saveCart() {
 
@@ -854,29 +688,24 @@ function saveCart() {
 }
 
 
-/* =========================
+/* =====================================================
    OPEN CART
-========================= */
+===================================================== */
 
 function openCart() {
 
   document
-    .getElementById(
-      "cartModal"
-    )
-    ?.classList.add(
-      "show"
-    );
-
+    .getElementById("cartModal")
+    ?.classList.add("show");
 
   renderCart();
 
 }
 
 
-/* =========================
+/* =====================================================
    RENDER CART
-========================= */
+===================================================== */
 
 function renderCart() {
 
@@ -885,15 +714,12 @@ function renderCart() {
       "cartItems"
     );
 
-
   const totalElement =
     document.getElementById(
       "cartTotal"
     );
 
-
   if (!box) return;
-
 
   if (!cart.length) {
 
@@ -907,139 +733,109 @@ function renderCart() {
       </div>
     `;
 
-
     if (totalElement) {
-
       totalElement.textContent =
         "₹0";
-
     }
-
 
     return;
   }
 
-
   let total = 0;
 
-
   box.innerHTML =
-    cart.map(
-      item => {
+    cart.map(item => {
 
-        const itemTotal =
-          Number(
-            item.price
-          ) *
-          Number(
-            item.quantity
-          );
+      const itemTotal =
+        Number(item.price) *
+        Number(item.quantity);
 
+      total += itemTotal;
 
-        total += itemTotal;
+      const image =
+        item.image_url ||
+        getCategoryImage(
+          "Fashion"
+        );
 
+      return `
+        <div class="cartItem">
 
-        const image =
-          item.image_url ||
-          getCategoryImage(
-            "Fashion"
-          );
-
-
-        return `
-          <div
-            class="cartItem"
+          <img
+            src="${escapeAttr(image)}"
+            onerror="
+              this.onerror=null;
+              this.src='${escapeAttr(
+                getCategoryImage(
+                  "Fashion"
+                )
+              )}';
+            "
           >
 
-            <img
-              src="${escapeAttr(
-                image
-              )}"
-              onerror="
-                this.onerror=null;
-                this.src='${escapeAttr(
-                  getCategoryImage(
-                    "Fashion"
+          <div>
+
+            <b>
+              ${escapeHTML(
+                item.name
+              )}
+            </b>
+
+            <p>
+              ₹${Number(
+                item.price
+              ).toLocaleString("en-IN")}
+            </p>
+
+            <div class="quantity">
+
+              <button
+                onclick="
+                  changeQty(
+                    ${Number(item.id)},
+                    -1
                   )
-                )}';
-              "
-            >
-
-
-            <div>
-
-              <b>
-                ${escapeHTML(
-                  item.name
-                )}
-              </b>
-
-
-              <p>
-                ₹${Number(
-                  item.price
-                ).toLocaleString(
-                  "en-IN"
-                )}
-              </p>
-
-
-              <div
-                class="quantity"
+                "
               >
+                −
+              </button>
 
-                <button
-                  onclick="
-                    changeQty(
-                      ${Number(item.id)},
-                      -1
-                    )
-                  "
-                >
-                  −
-                </button>
+              <span>
+                ${Number(
+                  item.quantity
+                )}
+              </span>
 
-
-                <span>
-                  ${Number(
-                    item.quantity
-                  )}
-                </span>
-
-
-                <button
-                  onclick="
-                    changeQty(
-                      ${Number(item.id)},
-                      1
-                    )
-                  "
-                >
-                  +
-                </button>
-
-              </div>
+              <button
+                onclick="
+                  changeQty(
+                    ${Number(item.id)},
+                    1
+                  )
+                "
+              >
+                +
+              </button>
 
             </div>
 
-
-            <button
-              class="remove"
-              onclick="
-                removeFromCart(
-                  ${Number(item.id)}
-                )
-              "
-            >
-              ×
-            </button>
-
           </div>
-        `;
 
-      }
-    ).join("");
+          <button
+            class="remove"
+            onclick="
+              removeFromCart(
+                ${Number(item.id)}
+              )
+            "
+          >
+            ×
+          </button>
 
+        </div>
+      `;
+
+    }).join("");
 
   if (totalElement) {
 
@@ -1054,14 +850,11 @@ function renderCart() {
 }
 
 
-/* =========================
+/* =====================================================
    CHANGE QUANTITY
-========================= */
+===================================================== */
 
-function changeQty(
-  id,
-  change
-) {
+function changeQty(id, change) {
 
   const item =
     cart.find(
@@ -1070,18 +863,12 @@ function changeQty(
         Number(id)
     );
 
-
   if (!item) return;
-
 
   if (
     change > 0 &&
-    Number(
-      item.quantity
-    ) >=
-      Number(
-        item.stock || 0
-      )
+    Number(item.quantity) >=
+    Number(item.stock || 0)
   ) {
 
     alert(
@@ -1091,14 +878,9 @@ function changeQty(
     return;
   }
 
+  item.quantity += change;
 
-  item.quantity +=
-    change;
-
-
-  if (
-    item.quantity <= 0
-  ) {
+  if (item.quantity <= 0) {
 
     cart =
       cart.filter(
@@ -1109,7 +891,6 @@ function changeQty(
 
   }
 
-
   saveCart();
 
   updateCartCount();
@@ -1119,13 +900,11 @@ function changeQty(
 }
 
 
-/* =========================
+/* =====================================================
    REMOVE
-========================= */
+===================================================== */
 
-function removeFromCart(
-  id
-) {
+function removeFromCart(id) {
 
   cart =
     cart.filter(
@@ -1134,7 +913,6 @@ function removeFromCart(
         Number(id)
     );
 
-
   saveCart();
 
   updateCartCount();
@@ -1144,9 +922,9 @@ function removeFromCart(
 }
 
 
-/* =========================
+/* =====================================================
    CHECKOUT
-========================= */
+===================================================== */
 
 function startCheckout() {
 
@@ -1159,29 +937,24 @@ function startCheckout() {
     return;
   }
 
-
   closeModal(
     "cartModal"
   );
 
-
   renderCheckoutSummary();
-
 
   document
     .getElementById(
       "checkoutModal"
     )
-    ?.classList.add(
-      "show"
-    );
+    ?.classList.add("show");
 
 }
 
 
-/* =========================
+/* =====================================================
    CHECKOUT SUMMARY
-========================= */
+===================================================== */
 
 function renderCheckoutSummary() {
 
@@ -1190,91 +963,70 @@ function renderCheckoutSummary() {
       "checkoutItems"
     );
 
-
   if (!box) return;
-
 
   let total = 0;
 
-
   box.innerHTML =
-    cart.map(
-      item => {
+    cart.map(item => {
 
-        const itemTotal =
-          Number(
-            item.price
-          ) *
-          Number(
-            item.quantity
-          );
+      const itemTotal =
+        Number(item.price) *
+        Number(item.quantity);
 
+      total += itemTotal;
 
-        total += itemTotal;
+      return `
+        <div class="summaryItem">
 
-
-        return `
-          <div
-            class="summaryItem"
+          <img
+            src="${escapeAttr(
+              item.image_url ||
+              getCategoryImage(
+                "Fashion"
+              )
+            )}"
           >
 
-            <img
-              src="${escapeAttr(
-                item.image_url ||
-                getCategoryImage(
-                  "Fashion"
-                )
-              )}"
-            >
+          <div>
 
-
-            <div>
-
-              <b>
-                ${escapeHTML(
-                  item.name
-                )}
-              </b>
-
-              <br>
-
-              ${Number(
-                item.quantity
+            <b>
+              ${escapeHTML(
+                item.name
               )}
-              ×
-              ₹${Number(
-                item.price
-              ).toLocaleString(
-                "en-IN"
-              )}
+            </b>
 
-            </div>
+            <br>
 
-
-            <strong>
-              ₹${itemTotal.toLocaleString(
-                "en-IN"
-              )}
-            </strong>
+            ${Number(
+              item.quantity
+            )}
+            × ₹${Number(
+              item.price
+            ).toLocaleString("en-IN")}
 
           </div>
-        `;
 
-      }
-    ).join("");
+          <strong>
+            ₹${itemTotal.toLocaleString(
+              "en-IN"
+            )}
+          </strong>
 
+        </div>
+      `;
+
+    }).join("");
 
   const subtotal =
     document.getElementById(
       "checkoutSubtotal"
     );
 
-
-  const checkoutTotal =
+  const totalElement =
     document.getElementById(
       "checkoutTotal"
     );
-
 
   if (subtotal) {
 
@@ -1286,10 +1038,9 @@ function renderCheckoutSummary() {
 
   }
 
+  if (totalElement) {
 
-  if (checkoutTotal) {
-
-    checkoutTotal.textContent =
+    totalElement.textContent =
       "₹" +
       total.toLocaleString(
         "en-IN"
@@ -1300,125 +1051,13 @@ function renderCheckoutSummary() {
 }
 
 
-/* =========================
-   GET CUSTOMER SESSION
-========================= */
-
-async function getCustomerUser() {
-
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await db.auth.getSession();
-
-
-    if (error) {
-
-      console.error(
-        "GET SESSION ERROR:",
-        error
-      );
-
-    }
-
-
-    let customer =
-      data?.session?.user ||
-      null;
-
-
-    /*
-      Customer login nahi hai
-      to anonymous account create.
-    */
-
-    if (!customer) {
-
-      const {
-        data: anonymousData,
-        error: anonymousError
-      } =
-        await db.auth.signInAnonymously();
-
-
-      if (anonymousError) {
-
-        console.error(
-          "ANONYMOUS LOGIN ERROR:",
-          anonymousError
-        );
-
-
-        throw new Error(
-          "Customer session nahi ban pa raha. Supabase me Anonymous Sign-Ins enable karo."
-        );
-
-      }
-
-
-      customer =
-        anonymousData?.user ||
-        null;
-
-    }
-
-
-    if (!customer?.id) {
-
-      throw new Error(
-        "Customer user ID nahi mila."
-      );
-
-    }
-
-
-    console.log(
-      "CUSTOMER USER:",
-      customer.id
-    );
-
-
-    return customer;
-
-  } catch (err) {
-
-    console.error(
-      "CUSTOMER SESSION ERROR:",
-      err
-    );
-
-    throw err;
-
-  }
-
-}
-
-
-/* =========================
+/* =====================================================
    PLACE ORDER
-========================= */
+===================================================== */
 
-async function placeOrder(
-  e
-) {
+async function placeOrder(e) {
 
   e.preventDefault();
-
-
-  /*
-    Double click se
-    duplicate order na bane.
-  */
-
-  if (placingOrder) {
-
-    return;
-
-  }
-
 
   if (!cart.length) {
 
@@ -1429,64 +1068,36 @@ async function placeOrder(
     return;
   }
 
-
   const name =
-    document
-      .getElementById(
-        "coName"
-      )
-      ?.value.trim() ||
-    "";
-
+    document.getElementById(
+      "coName"
+    )?.value.trim();
 
   const mobile =
-    document
-      .getElementById(
-        "coMobile"
-      )
-      ?.value.trim() ||
-    "";
-
+    document.getElementById(
+      "coMobile"
+    )?.value.trim();
 
   const address =
-    document
-      .getElementById(
-        "coAddress"
-      )
-      ?.value.trim() ||
-    "";
-
+    document.getElementById(
+      "coAddress"
+    )?.value.trim();
 
   const city =
-    document
-      .getElementById(
-        "coCity"
-      )
-      ?.value.trim() ||
-    "";
-
+    document.getElementById(
+      "coCity"
+    )?.value.trim();
 
   const state =
-    document
-      .getElementById(
-        "coState"
-      )
-      ?.value.trim() ||
-    "";
-
+    document.getElementById(
+      "coState"
+    )?.value.trim();
 
   const pincode =
-    document
-      .getElementById(
-        "coPincode"
-      )
-      ?.value.trim() ||
-    "";
+    document.getElementById(
+      "coPincode"
+    )?.value.trim();
 
-
-  /* =========================
-     VALIDATION
-  ========================= */
 
   if (
     !name ||
@@ -1503,11 +1114,7 @@ async function placeOrder(
   }
 
 
-  if (
-    !/^\d{10}$/.test(
-      mobile
-    )
-  ) {
+  if (!/^\d{10}$/.test(mobile)) {
 
     alert(
       "10 digit mobile number enter karo."
@@ -1517,11 +1124,7 @@ async function placeOrder(
   }
 
 
-  if (
-    !/^\d{6}$/.test(
-      pincode
-    )
-  ) {
+  if (!/^\d{6}$/.test(pincode)) {
 
     alert(
       "6 digit pincode enter karo."
@@ -1531,23 +1134,729 @@ async function placeOrder(
   }
 
 
-  placingOrder = true;
+  const total =
+    cart.reduce(
+      (sum, item) =>
+        sum +
+        Number(item.price) *
+        Number(item.quantity),
+      0
+    );
 
 
-  /* =========================
-     GET CUSTOMER
-  ========================= */
+  const orderId =
+    "BZ" +
+    Date.now()
+      .toString()
+      .slice(-8);
 
-  let customerUser;
 
+  currentOrder = {
+
+    orderId,
+
+    name,
+
+    mobile,
+
+    address,
+
+    city,
+
+    state,
+
+    pincode,
+
+    payment:
+      "Cash on Delivery",
+
+    items:
+      JSON.parse(
+        JSON.stringify(cart)
+      ),
+
+    total
+
+  };
+
+
+  /*
+    IMPORTANT:
+    Buyer guest ho sakta hai.
+    Isliye user_id ko sirf tab bhejenge
+    jab Supabase Auth user logged in ho.
+  */
+
+  let authUser = null;
 
   try {
 
-    customerUser =
-      await getCustomerUser();
+    const {
+      data
+    } =
+      await db.auth.getUser();
+
+    authUser =
+      data?.user || null;
 
   } catch (err) {
 
+    console.log(
+      "No logged-in buyer"
+    );
+
+  }
+
+
+  const rows =
+    cart.map(item => {
+
+      const row = {
+
+        seller_id:
+          item.seller_id || null,
+
+        product_id:
+          item.id,
+
+        product_name:
+          item.name,
+
+        image_url:
+          item.image_url || null,
+
+        unit_price:
+          Number(item.price),
+
+        customer_name:
+          name,
+
+        mobile:
+          mobile,
+
+        address:
+          address,
+
+        city:
+          city,
+
+        state:
+          state,
+
+        pincode:
+          pincode,
+
+        quantity:
+          Number(item.quantity),
+
+        payment_method:
+          "Cash on Delivery",
+
+        status:
+          "New",
+
+        order_no:
+          orderId,
+
+        total:
+          Number(item.price) *
+          Number(item.quantity)
+
+      };
+
+
+      /*
+        user_id ONLY if buyer is logged in.
+      */
+
+      if (authUser?.id) {
+
+        row.user_id =
+          authUser.id;
+
+      }
+
+
+      return row;
+
+    });
+
+
+  console.log(
+    "Saving order:",
+    rows
+  );
+
+
+  const {
+    error
+  } =
+    await db
+      .from("orders")
+      .insert(rows);
+
+
+  if (error) {
+
+    console.error(
+      "ORDER SAVE ERROR:",
+      error
+    );
+
     alert(
-      err.message ||
-      "Customer
+      "Order save nahi hua:\n\n" +
+      error.message
+    );
+
+    return;
+  }
+
+
+  /*
+    STOCK UPDATE
+  */
+
+  for (const item of cart) {
+
+    try {
+
+      const newStock =
+        Math.max(
+          0,
+          Number(item.stock) -
+          Number(item.quantity)
+        );
+
+      await db
+        .from("products")
+        .update({
+          stock: newStock
+        })
+        .eq(
+          "id",
+          item.id
+        );
+
+    } catch (err) {
+
+      console.log(
+        "Stock update error:",
+        err
+      );
+
+    }
+
+  }
+
+
+  closeModal(
+    "checkoutModal"
+  );
+
+
+  const successText =
+    document.getElementById(
+      "successText"
+    );
+
+
+  if (successText) {
+
+    successText.textContent =
+      `Order #${orderId} — Total ₹${total.toLocaleString(
+        "en-IN"
+      )}.`;
+
+  }
+
+
+  document
+    .getElementById(
+      "successModal"
+    )
+    ?.classList.add("show");
+
+}
+
+
+/* =====================================================
+   WHATSAPP
+===================================================== */
+
+function sendOrderWhatsApp() {
+
+  if (!currentOrder) return;
+
+  const order =
+    currentOrder;
+
+
+  const items =
+    order.items
+      .map(item =>
+
+        `• ${item.name} × ${item.quantity} = ₹${
+          (
+            Number(item.price) *
+            Number(item.quantity)
+          ).toLocaleString(
+            "en-IN"
+          )
+        }`
+
+      )
+      .join("\n");
+
+
+  const message =
+`BUYZO NEW ORDER 📦
+
+Order ID: ${order.orderId}
+
+Customer Details
+Name: ${order.name}
+Mobile: ${order.mobile}
+
+Delivery Address
+${order.address}
+${order.city}, ${order.state}
+Pincode: ${order.pincode}
+
+Payment: Cash on Delivery
+
+Products
+${items}
+
+Total: ₹${order.total.toLocaleString(
+  "en-IN"
+)}`;
+
+
+  window.location.href =
+    "https://wa.me/" +
+    WHATSAPP_NUMBER +
+    "?text=" +
+    encodeURIComponent(
+      message
+    );
+
+}
+
+
+/* =====================================================
+   FINISH ORDER
+===================================================== */
+
+function finishOrder() {
+
+  cart = [];
+
+  saveCart();
+
+  updateCartCount();
+
+  currentOrder = null;
+
+  closeModal(
+    "successModal"
+  );
+
+}
+
+
+/* =====================================================
+   ACCOUNT
+===================================================== */
+
+function openAccount() {
+
+  document
+    .getElementById(
+      "accountModal"
+    )
+    ?.classList.add("show");
+
+  loginForm();
+
+}
+
+
+function loginForm() {
+
+  const form =
+    document.getElementById(
+      "accountForm"
+    );
+
+  if (!form) return;
+
+  form.innerHTML = `
+
+    <input
+      id="accountEmail"
+      type="email"
+      placeholder="Email"
+    >
+
+    <input
+      id="accountPassword"
+      type="password"
+      placeholder="Password"
+    >
+
+    <button
+      type="button"
+      class="orange wide"
+      onclick="doLogin()"
+    >
+      Login
+    </button>
+
+  `;
+
+  setTab(
+    "login"
+  );
+
+}
+
+
+function signupForm() {
+
+  const form =
+    document.getElementById(
+      "accountForm"
+    );
+
+  if (!form) return;
+
+  form.innerHTML = `
+
+    <input
+      id="accountEmail"
+      type="email"
+      placeholder="Email"
+    >
+
+    <input
+      id="accountPassword"
+      type="password"
+      placeholder="Password"
+    >
+
+    <button
+      type="button"
+      class="orange wide"
+      onclick="doSignup()"
+    >
+      Create Account
+    </button>
+
+  `;
+
+  setTab(
+    "signup"
+  );
+
+}
+
+
+function setTab(tab) {
+
+  document
+    .getElementById(
+      "loginTab"
+    )
+    ?.classList.toggle(
+      "selected",
+      tab === "login"
+    );
+
+  document
+    .getElementById(
+      "signupTab"
+    )
+    ?.classList.toggle(
+      "selected",
+      tab === "signup"
+    );
+
+}
+
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+async function doLogin() {
+
+  const email =
+    document
+      .getElementById(
+        "accountEmail"
+      )
+      ?.value.trim();
+
+  const password =
+    document
+      .getElementById(
+        "accountPassword"
+      )
+      ?.value;
+
+
+  const msg =
+    document.getElementById(
+      "accountMsg"
+    );
+
+
+  const {
+    error
+  } =
+    await db.auth.signInWithPassword({
+
+      email,
+
+      password
+
+    });
+
+
+  if (error) {
+
+    if (msg) {
+
+      msg.textContent =
+        error.message;
+
+    }
+
+    return;
+  }
+
+
+  if (msg) {
+
+    msg.textContent =
+      "Login successful ✅";
+
+  }
+
+
+  setTimeout(() => {
+
+    closeModal(
+      "accountModal"
+    );
+
+  }, 500);
+
+}
+
+
+/* =====================================================
+   SIGNUP
+===================================================== */
+
+async function doSignup() {
+
+  const email =
+    document
+      .getElementById(
+        "accountEmail"
+      )
+      ?.value.trim();
+
+  const password =
+    document
+      .getElementById(
+        "accountPassword"
+      )
+      ?.value;
+
+
+  const msg =
+    document.getElementById(
+      "accountMsg"
+    );
+
+
+  if (!email || !password) {
+
+    if (msg) {
+
+      msg.textContent =
+        "Email aur password required hai.";
+
+    }
+
+    return;
+  }
+
+
+  if (password.length < 6) {
+
+    if (msg) {
+
+      msg.textContent =
+        "Password minimum 6 characters ka hona chahiye.";
+
+    }
+
+    return;
+  }
+
+
+  const {
+    error
+  } =
+    await db.auth.signUp({
+
+      email,
+
+      password
+
+    });
+
+
+  if (error) {
+
+    if (msg) {
+
+      msg.textContent =
+        error.message;
+
+    }
+
+    return;
+  }
+
+
+  if (msg) {
+
+    msg.textContent =
+      "Account created. Email verify karo.";
+
+  }
+
+}
+
+
+/* =====================================================
+   CLOSE MODAL
+===================================================== */
+
+function closeModal(id) {
+
+  document
+    .getElementById(id)
+    ?.classList.remove(
+      "show"
+    );
+
+}
+
+
+/* =====================================================
+   SECURITY
+===================================================== */
+
+function escapeHTML(value) {
+
+  return String(
+    value ?? ""
+  )
+    .replace(
+      /[&<>"']/g,
+      char => ({
+
+        "&":
+          "&amp;",
+
+        "<":
+          "&lt;",
+
+        ">":
+          "&gt;",
+
+        '"':
+          "&quot;",
+
+        "'":
+          "&#039;"
+
+      }[char])
+    );
+
+}
+
+
+function escapeAttr(value) {
+
+  return escapeHTML(
+    value
+  )
+    .replace(
+      /`/g,
+      "&#096;"
+    );
+
+}
+
+
+/* =====================================================
+   SUPABASE CONNECTION TEST
+===================================================== */
+
+async function testSupabase() {
+
+  console.log(
+    "Testing Supabase..."
+  );
+
+  const {
+    data,
+    error
+  } =
+    await db
+      .from("products")
+      .select("id")
+      .limit(1);
+
+  if (error) {
+
+    console.error(
+      "Supabase TEST FAILED:",
+      error
+    );
+
+    return false;
+  }
+
+  console.log(
+    "Supabase TEST OK:",
+    data
+  );
+
+  return true;
+
+}
+
+
+/* =====================================================
+   AUTO REFRESH PRODUCTS
+===================================================== */
+
+setInterval(() => {
+
+  if (
+    document.visibilityState ===
+    "visible"
+  ) {
+
+    loadProducts();
+
+  }
+
+}, 60000);
