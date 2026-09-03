@@ -772,8 +772,6 @@ function renderCheckoutSummary() {
       "₹" +
       total.toLocaleString("en-IN");
 }
-
-
 /* =========================
    PLACE ORDER
 ========================= */
@@ -783,65 +781,147 @@ async function placeOrder(e) {
   e.preventDefault();
 
   if (!cart.length) {
-
     alert("Cart empty hai.");
-
     return;
   }
 
   const name =
     document.getElementById("coName")
-      .value.trim();
+      ?.value.trim() || "";
 
   const mobile =
     document.getElementById("coMobile")
-      .value.trim();
+      ?.value.trim() || "";
 
   const address =
     document.getElementById("coAddress")
-      .value.trim();
+      ?.value.trim() || "";
 
   const city =
     document.getElementById("coCity")
-      .value.trim();
+      ?.value.trim() || "";
 
   const state =
     document.getElementById("coState")
-      .value.trim();
+      ?.value.trim() || "";
 
   const pincode =
     document.getElementById("coPincode")
-      .value.trim();
+      ?.value.trim() || "";
+
+  /* =========================
+     VALIDATION
+  ========================= */
 
   if (!name || !address || !city || !state) {
-
     alert("Saari delivery details fill karo.");
-
     return;
   }
 
   if (!/^\d{10}$/.test(mobile)) {
-
     alert("10 digit mobile number enter karo.");
-
     return;
   }
 
   if (!/^\d{6}$/.test(pincode)) {
-
     alert("6 digit pincode enter karo.");
+    return;
+  }
+
+  /* =========================
+     GET CUSTOMER USER
+  ========================= */
+
+  let customerUser = null;
+
+  try {
+
+    const {
+      data: sessionData,
+      error: sessionError
+    } = await db.auth.getSession();
+
+    if (sessionError) {
+      console.error(
+        "Session error:",
+        sessionError
+      );
+    }
+
+    customerUser =
+      sessionData?.session?.user || null;
+
+    /*
+      Agar customer login nahi hai,
+      anonymous user create karo.
+    */
+
+    if (!customerUser) {
+
+      const {
+        data: anonymousData,
+        error: anonymousError
+      } = await db.auth.signInAnonymously();
+
+      if (anonymousError) {
+
+        console.error(
+          "Anonymous login error:",
+          anonymousError
+        );
+
+        alert(
+          "Order ke liye customer session nahi ban pa raha.\n\n" +
+          "Supabase me Anonymous Sign-Ins enable karo."
+        );
+
+        return;
+      }
+
+      customerUser =
+        anonymousData?.user || null;
+    }
+
+    if (!customerUser?.id) {
+
+      alert(
+        "Customer User ID nahi mila. Order save nahi hua."
+      );
+
+      return;
+    }
+
+  } catch (err) {
+
+    console.error(
+      "CUSTOMER AUTH ERROR:",
+      err
+    );
+
+    alert(
+      "Customer session error: " +
+      (err.message || "Unknown error")
+    );
 
     return;
   }
+
+  /* =========================
+     TOTAL
+  ========================= */
 
   const total =
     cart.reduce(
       (sum, item) =>
         sum +
-        Number(item.price) *
-        Number(item.quantity),
+        Number(item.price || 0) *
+        Number(item.quantity || 0),
       0
     );
+
+  /* =========================
+     ORDER NUMBER
+  ========================= */
 
   const orderId =
     "BZ" +
@@ -849,9 +929,16 @@ async function placeOrder(e) {
       .toString()
       .slice(-8);
 
+  /* =========================
+     CURRENT ORDER
+  ========================= */
+
   currentOrder = {
 
     orderId,
+
+    user_id:
+      customerUser.id,
 
     name,
     mobile,
@@ -873,11 +960,18 @@ async function placeOrder(e) {
   };
 
   /* =========================
-     SAVE EACH PRODUCT ORDER
+     CREATE ORDER ROWS
   ========================= */
 
   const rows =
     cart.map(item => ({
+
+      /*
+       * IMPORTANT
+       * Ye missing tha.
+       */
+      user_id:
+        customerUser.id,
 
       seller_id:
         item.seller_id,
@@ -892,7 +986,7 @@ async function placeOrder(e) {
         item.image_url || null,
 
       unit_price:
-        Number(item.price),
+        Number(item.price || 0),
 
       customer_name:
         name,
@@ -913,7 +1007,7 @@ async function placeOrder(e) {
         pincode,
 
       quantity:
-        Number(item.quantity),
+        Number(item.quantity || 1),
 
       payment_method:
         "Cash on Delivery",
@@ -925,8 +1019,8 @@ async function placeOrder(e) {
         orderId,
 
       total:
-        Number(item.price) *
-        Number(item.quantity)
+        Number(item.price || 0) *
+        Number(item.quantity || 1)
 
     }));
 
@@ -935,25 +1029,41 @@ async function placeOrder(e) {
     rows
   );
 
-  const { error } =
-    await db
-      .from("orders")
-      .insert(rows);
+  /* =========================
+     SAVE ORDER
+  ========================= */
+
+  const {
+    data: savedOrders,
+    error
+  } = await db
+    .from("orders")
+    .insert(rows)
+    .select();
 
   if (error) {
 
     console.error(
-      "Order save error:",
+      "ORDER SAVE ERROR:",
       error
     );
 
     alert(
-      "Order save nahi hua: " +
+      "Order save nahi hua:\n\n" +
       error.message
     );
 
     return;
   }
+
+  console.log(
+    "ORDER SAVED:",
+    savedOrders
+  );
+
+  /* =========================
+     SUCCESS
+  ========================= */
 
   closeModal("checkoutModal");
 
@@ -974,329 +1084,3 @@ async function placeOrder(e) {
     ?.classList.add("show");
 }
 
-
-/* =========================
-   WHATSAPP
-========================= */
-
-function sendOrderWhatsApp() {
-
-  if (!currentOrder) return;
-
-  const order =
-    currentOrder;
-
-  const items =
-    order.items
-      .map(item =>
-        `• ${item.name} × ${item.quantity} = ₹${
-          (
-            Number(item.price) *
-            Number(item.quantity)
-          ).toLocaleString("en-IN")
-        }`
-      )
-      .join("\n");
-
-  const message =
-`BUYZO NEW ORDER 📦
-
-Order ID: ${order.orderId}
-
-Customer Details
-Name: ${order.name}
-Mobile: ${order.mobile}
-
-Delivery Address
-${order.address}
-${order.city}, ${order.state}
-Pincode: ${order.pincode}
-
-Payment: Cash on Delivery
-
-Products
-${items}
-
-Total: ₹${order.total.toLocaleString("en-IN")}`;
-
-  window.location.href =
-    "https://wa.me/" +
-    WHATSAPP_NUMBER +
-    "?text=" +
-    encodeURIComponent(message);
-}
-
-
-/* =========================
-   FINISH ORDER
-========================= */
-
-function finishOrder() {
-
-  cart = [];
-
-  saveCart();
-
-  updateCartCount();
-
-  currentOrder = null;
-
-  closeModal("successModal");
-}
-
-
-/* =========================
-   ACCOUNT
-========================= */
-
-function openAccount() {
-
-  document
-    .getElementById("accountModal")
-    ?.classList.add("show");
-
-  loginForm();
-}
-
-
-function loginForm() {
-
-  const form =
-    document.getElementById(
-      "accountForm"
-    );
-
-  if (!form) return;
-
-  form.innerHTML = `
-
-    <input
-      id="accountEmail"
-      type="email"
-      placeholder="Email"
-    >
-
-    <input
-      id="accountPassword"
-      type="password"
-      placeholder="Password"
-    >
-
-    <button
-      type="button"
-      class="orange wide"
-      onclick="doLogin()"
-    >
-      Login
-    </button>
-
-  `;
-
-  setTab("login");
-}
-
-
-function signupForm() {
-
-  const form =
-    document.getElementById(
-      "accountForm"
-    );
-
-  if (!form) return;
-
-  form.innerHTML = `
-
-    <input
-      id="accountEmail"
-      type="email"
-      placeholder="Email"
-    >
-
-    <input
-      id="accountPassword"
-      type="password"
-      placeholder="Password"
-    >
-
-    <button
-      type="button"
-      class="orange wide"
-      onclick="doSignup()"
-    >
-      Create Account
-    </button>
-
-  `;
-
-  setTab("signup");
-}
-
-
-function setTab(tab) {
-
-  document
-    .getElementById("loginTab")
-    ?.classList.toggle(
-      "selected",
-      tab === "login"
-    );
-
-  document
-    .getElementById("signupTab")
-    ?.classList.toggle(
-      "selected",
-      tab === "signup"
-    );
-}
-
-
-/* =========================
-   LOGIN
-========================= */
-
-async function doLogin() {
-
-  const email =
-    document
-      .getElementById("accountEmail")
-      ?.value.trim();
-
-  const password =
-    document
-      .getElementById("accountPassword")
-      ?.value;
-
-  const msg =
-    document.getElementById(
-      "accountMsg"
-    );
-
-  const { error } =
-    await db.auth.signInWithPassword({
-      email,
-      password
-    });
-
-  if (error) {
-
-    if (msg) {
-      msg.textContent =
-        error.message;
-    }
-
-    return;
-  }
-
-  if (msg) {
-    msg.textContent =
-      "Login successful ✅";
-  }
-
-  setTimeout(() => {
-    closeModal("accountModal");
-  }, 500);
-}
-
-
-/* =========================
-   SIGNUP
-========================= */
-
-async function doSignup() {
-
-  const email =
-    document
-      .getElementById("accountEmail")
-      ?.value.trim();
-
-  const password =
-    document
-      .getElementById("accountPassword")
-      ?.value;
-
-  const msg =
-    document.getElementById(
-      "accountMsg"
-    );
-
-  if (!email || !password) {
-
-    if (msg) {
-      msg.textContent =
-        "Email aur password required hai.";
-    }
-
-    return;
-  }
-
-  if (password.length < 6) {
-
-    if (msg) {
-      msg.textContent =
-        "Password minimum 6 characters ka hona chahiye.";
-    }
-
-    return;
-  }
-
-  const { error } =
-    await db.auth.signUp({
-      email,
-      password
-    });
-
-  if (error) {
-
-    if (msg) {
-      msg.textContent =
-        error.message;
-    }
-
-    return;
-  }
-
-  if (msg) {
-    msg.textContent =
-      "Account created. Email verify karo.";
-  }
-}
-
-
-/* =========================
-   CLOSE MODAL
-========================= */
-
-function closeModal(id) {
-
-  document
-    .getElementById(id)
-    ?.classList.remove("show");
-}
-
-
-/* =========================
-   SECURITY
-========================= */
-
-function escapeHTML(value) {
-
-  return String(value ?? "")
-    .replace(
-      /[&<>"']/g,
-      char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      }[char])
-    );
-}
-
-
-function escapeAttr(value) {
-
-  return escapeHTML(value)
-    .replace(/`/g, "&#096;");
-}
