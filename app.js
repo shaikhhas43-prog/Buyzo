@@ -1,11 +1,31 @@
-const SUPABASE_URL = "https://ahhrhjucbdddcdlzjokg.supabase.co";
-const SUPABASE_KEY = "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
-const WHATSAPP_NUMBER = "919725231594";
+/* =========================================================
+   BUYZO CUSTOMER APP.JS
+   Product + Cart + Checkout + Orders + Account
+========================================================= */
+
+const SUPABASE_URL =
+  "https://ahhrhjucbdddcdlzjokg.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_EwPScyGzZsQoNPY9J7GdxA_RpqpiwlO";
+
+const WHATSAPP_NUMBER =
+  "919725231594";
+
+
+/* =========================================================
+   SUPABASE
+========================================================= */
 
 const db = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
+
+
+/* =========================================================
+   GLOBAL
+========================================================= */
 
 let allProducts = [];
 let filteredProducts = [];
@@ -15,61 +35,227 @@ let cart = JSON.parse(
 );
 
 let currentOrder = null;
+let currentUser = null;
 
 
-/* =====================================================
+/* =========================================================
    START
-===================================================== */
+========================================================= */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener(
+  "DOMContentLoaded",
+  init
+);
 
-  console.log("BUYZO started");
+
+async function init() {
+
+  console.log("BUYZO APP STARTING...");
+
+  try {
+
+    const {
+      data,
+      error
+    } = await db.auth.getSession();
+
+    if (error) {
+      console.error("Session error:", error);
+    }
+
+    currentUser =
+      data?.session?.user || null;
+
+  } catch (error) {
+
+    console.error(
+      "Session check failed:",
+      error
+    );
+
+  }
+
+  updateCartCount();
+
+  setupSearch();
+
+  setupCheckout();
+
+  /*
+     Products load independently.
+     Even if auth/session has problem,
+     products page should still attempt loading.
+  */
 
   loadProducts();
-  updateCartCount();
+
+}
+
+
+/* =========================================================
+   SEARCH SETUP
+========================================================= */
+
+function setupSearch() {
 
   const search =
     document.getElementById("search");
 
-  if (search) {
+  if (!search) return;
 
-    search.addEventListener("keydown", e => {
+  search.addEventListener(
+    "keydown",
+    function(e) {
 
       if (e.key === "Enter") {
         searchProducts();
       }
 
-    });
+    }
+  );
 
-  }
+}
 
-  const checkoutForm =
-    document.getElementById("checkoutForm");
 
-  if (checkoutForm) {
+/* =========================================================
+   CHECKOUT SETUP
+========================================================= */
 
-    checkoutForm.addEventListener(
-      "submit",
-      placeOrder
+function setupCheckout() {
+
+  const form =
+    document.getElementById(
+      "checkoutForm"
     );
 
+  if (!form) return;
+
+  form.addEventListener(
+    "submit",
+    placeOrder
+  );
+
+}
+
+
+/* =========================================================
+   AUTH SESSION
+========================================================= */
+
+async function getCurrentUser() {
+
+  try {
+
+    const {
+      data,
+      error
+    } = await db.auth.getUser();
+
+    if (error) {
+
+      console.warn(
+        "getUser:",
+        error.message
+      );
+
+      return null;
+    }
+
+    currentUser =
+      data?.user || null;
+
+    return currentUser;
+
+  } catch (error) {
+
+    console.error(
+      "getCurrentUser error:",
+      error
+    );
+
+    return null;
   }
 
-});
+}
 
 
-/* =====================================================
+/* =========================================================
+   ENSURE USER ID
+========================================================= */
+
+async function ensureOrderUser() {
+
+  /*
+     First check existing login.
+  */
+
+  let user =
+    await getCurrentUser();
+
+  if (user) {
+    return user;
+  }
+
+
+  /*
+     Customer is not logged in.
+
+     Try anonymous authentication.
+     Supabase Dashboard me Anonymous Sign-Ins
+     enabled hona chahiye.
+  */
+
+  try {
+
+    const {
+      data,
+      error
+    } = await db.auth.signInAnonymously();
+
+    if (error) {
+
+      console.warn(
+        "Anonymous login unavailable:",
+        error.message
+      );
+
+      return null;
+    }
+
+    user =
+      data?.user || null;
+
+    currentUser = user;
+
+    return user;
+
+  } catch (error) {
+
+    console.error(
+      "Anonymous auth error:",
+      error
+    );
+
+    return null;
+  }
+
+}
+
+
+/* =========================================================
    PRODUCTS
-===================================================== */
+========================================================= */
 
 async function loadProducts() {
 
   const grid =
-    document.getElementById("productGrid");
+    document.getElementById(
+      "productGrid"
+    );
 
   if (!grid) {
 
-    console.error(
+    console.warn(
       "productGrid element not found"
     );
 
@@ -82,14 +268,14 @@ async function loadProducts() {
     </div>
   `;
 
+
   try {
 
-    console.log(
-      "Connecting to Supabase..."
-    );
+    /*
+       Timeout protection.
+    */
 
-    const result = await Promise.race([
-
+    const query =
       db
         .from("products")
         .select(`
@@ -104,33 +290,46 @@ async function loadProducts() {
           seller_id,
           created_at
         `)
-        .order("created_at", {
-          ascending: false
-        }),
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
 
-      new Promise(resolve =>
-        setTimeout(() =>
-          resolve({
-            data: null,
-            error: {
-              message:
-                "Supabase request timeout. Check your Supabase URL, key or RLS policy."
-            }
-          }),
-        15000)
-      )
 
-    ]);
+    const result =
+      await Promise.race([
+
+        query,
+
+        new Promise(resolve =>
+          setTimeout(
+            () =>
+              resolve({
+                data: null,
+                error: {
+                  message:
+                    "Products request timeout. Supabase/RLS check karo."
+                }
+              }),
+            15000
+          )
+        )
+
+      ]);
+
 
     const {
       data,
       error
     } = result;
 
+
     if (error) {
 
       console.error(
-        "PRODUCT ERROR:",
+        "Products error:",
         error
       );
 
@@ -138,7 +337,7 @@ async function loadProducts() {
         <div class="empty">
 
           <h3>
-            ⚠️ Products load nahi ho rahe
+            Products load nahi ho rahe.
           </h3>
 
           <p>
@@ -151,14 +350,14 @@ async function loadProducts() {
           <button
             onclick="loadProducts()"
             style="
-              margin-top:15px;
-              padding:12px 20px;
+              margin-top:12px;
+              padding:10px 18px;
               border:0;
               border-radius:8px;
               cursor:pointer;
             "
           >
-            🔄 Try Again
+            ↻ Try Again
           </button>
 
         </div>
@@ -167,49 +366,56 @@ async function loadProducts() {
       return;
     }
 
-    allProducts = data || [];
+
+    allProducts =
+      Array.isArray(data)
+        ? data
+        : [];
 
     filteredProducts =
       [...allProducts];
 
+
     console.log(
-      "Products loaded:",
+      "BUYZO PRODUCTS:",
       allProducts
     );
 
+
     renderProducts();
 
-  } catch (err) {
+
+  } catch (error) {
 
     console.error(
-      "Unexpected product error:",
-      err
+      "loadProducts crash:",
+      error
     );
 
     grid.innerHTML = `
       <div class="empty">
 
         <h3>
-          ⚠️ Something went wrong
+          Something went wrong.
         </h3>
 
         <p>
           ${escapeHTML(
-            err.message ||
-            "Unable to load products"
+            error.message ||
+            "Products load failed"
           )}
         </p>
 
         <button
           onclick="loadProducts()"
           style="
-            margin-top:15px;
-            padding:12px 20px;
+            margin-top:12px;
+            padding:10px 18px;
             border:0;
             border-radius:8px;
           "
         >
-          🔄 Try Again
+          ↻ Try Again
         </button>
 
       </div>
@@ -219,10 +425,13 @@ async function loadProducts() {
 
 }
 
+window.loadProducts =
+  loadProducts;
 
-/* =====================================================
+
+/* =========================================================
    CATEGORY IMAGE
-===================================================== */
+========================================================= */
 
 function getCategoryImage(category) {
 
@@ -230,57 +439,70 @@ function getCategoryImage(category) {
     String(category || "")
       .toLowerCase();
 
+
   if (c.includes("mobile")) {
 
-    return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800";
+    return
+      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800";
 
   }
+
 
   if (c.includes("fashion")) {
 
-    return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800";
+    return
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800";
 
   }
+
 
   if (c.includes("electronics")) {
 
-    return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
+    return
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
 
   }
+
 
   if (c.includes("home")) {
 
-    return "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800";
+    return
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800";
 
   }
+
 
   if (c.includes("beauty")) {
 
-    return "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800";
+    return
+      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800";
 
   }
+
 
   if (c.includes("sports")) {
 
-    return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800";
+    return
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800";
 
   }
 
-  return "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
+
+  return
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
 
 }
 
 
-/* =====================================================
+/* =========================================================
    PRODUCT IMAGE
-===================================================== */
+========================================================= */
 
 function getProductImage(product) {
 
   if (
     product &&
-    product.image_url &&
-    String(product.image_url).trim()
+    product.image_url
   ) {
 
     return product.image_url;
@@ -294,9 +516,9 @@ function getProductImage(product) {
 }
 
 
-/* =====================================================
+/* =========================================================
    RENDER PRODUCTS
-===================================================== */
+========================================================= */
 
 function renderProducts() {
 
@@ -307,17 +529,18 @@ function renderProducts() {
 
   if (!grid) return;
 
+
   if (!filteredProducts.length) {
 
     grid.innerHTML = `
       <div class="empty">
 
         <h3>
-          🛍️ No products found
+          No products found
         </h3>
 
         <p>
-          Abhi is category me product available nahi hai.
+          Is category me product available nahi hai.
         </p>
 
       </div>
@@ -325,6 +548,7 @@ function renderProducts() {
 
     return;
   }
+
 
   grid.innerHTML =
     filteredProducts
@@ -334,9 +558,9 @@ function renderProducts() {
 }
 
 
-/* =====================================================
+/* =========================================================
    PRODUCT CARD
-===================================================== */
+========================================================= */
 
 function createProductCard(product) {
 
@@ -359,7 +583,9 @@ function createProductCard(product) {
         )
       : 0;
 
+
   return `
+
     <article class="productCard">
 
       <div class="productImage">
@@ -374,10 +600,14 @@ function createProductCard(product) {
             : ""
         }
 
+
         <img
           src="${escapeAttr(image)}"
-          alt="${escapeHTML(product.name)}"
+          alt="${escapeHTML(
+            product.name
+          )}"
           loading="lazy"
+
           onerror="
             this.onerror=null;
             this.src='${escapeAttr(
@@ -390,6 +620,7 @@ function createProductCard(product) {
 
       </div>
 
+
       <div class="productBody">
 
         <small class="category">
@@ -399,30 +630,37 @@ function createProductCard(product) {
           )}
         </small>
 
+
         <h3>
           ${escapeHTML(
-            product.name ||
-            "Product"
+            product.name
           )}
         </h3>
+
 
         <div class="price">
 
           <strong>
-            ₹${price.toLocaleString("en-IN")}
+            ₹${price.toLocaleString(
+              "en-IN"
+            )}
           </strong>
+
 
           ${
             old > price
               ? `
                 <del>
-                  ₹${old.toLocaleString("en-IN")}
+                  ₹${old.toLocaleString(
+                    "en-IN"
+                  )}
                 </del>
               `
               : ""
           }
 
         </div>
+
 
         <div class="stock">
 
@@ -434,9 +672,16 @@ function createProductCard(product) {
 
         </div>
 
+
         <button
           class="addCart"
-          onclick="addToCart(${Number(product.id)})"
+
+          onclick="
+            addToCart(
+              ${Number(product.id)}
+            )
+          "
+
           ${stock <= 0 ? "disabled" : ""}
         >
 
@@ -451,18 +696,21 @@ function createProductCard(product) {
       </div>
 
     </article>
+
   `;
 
 }
 
 
-/* =====================================================
+/* =========================================================
    CATEGORY FILTER
-===================================================== */
+========================================================= */
 
 function filterCat(category) {
 
-  if (category === "All") {
+  if (
+    category === "All"
+  ) {
 
     filteredProducts =
       [...allProducts];
@@ -470,21 +718,23 @@ function filterCat(category) {
   } else {
 
     filteredProducts =
-      allProducts.filter(product =>
-
-        String(product.category || "")
+      allProducts.filter(
+        product =>
+          String(
+            product.category || ""
+          )
           .toLowerCase()
           .trim() ===
-
-        String(category || "")
-          .toLowerCase()
-          .trim()
-
+          String(category)
+            .toLowerCase()
+            .trim()
       );
 
   }
 
+
   renderProducts();
+
 
   document
     .getElementById("products")
@@ -494,10 +744,13 @@ function filterCat(category) {
 
 }
 
+window.filterCat =
+  filterCat;
 
-/* =====================================================
+
+/* =========================================================
    SEARCH
-===================================================== */
+========================================================= */
 
 function searchProducts() {
 
@@ -508,8 +761,9 @@ function searchProducts() {
 
   const q =
     input?.value
-      .trim()
-      .toLowerCase() || "";
+      ?.trim()
+      ?.toLowerCase() || "";
+
 
   if (!q) {
 
@@ -519,28 +773,32 @@ function searchProducts() {
   } else {
 
     filteredProducts =
-      allProducts.filter(product => {
+      allProducts.filter(
+        product => {
 
-        const name =
-          String(
-            product.name || ""
-          ).toLowerCase();
+          const name =
+            String(
+              product.name || ""
+            ).toLowerCase();
 
-        const category =
-          String(
-            product.category || ""
-          ).toLowerCase();
+          const category =
+            String(
+              product.category || ""
+            ).toLowerCase();
 
-        return (
-          name.includes(q) ||
-          category.includes(q)
-        );
+          return (
+            name.includes(q) ||
+            category.includes(q)
+          );
 
-      });
+        }
+      );
 
   }
 
+
   renderProducts();
+
 
   document
     .getElementById("products")
@@ -550,10 +808,13 @@ function searchProducts() {
 
 }
 
+window.searchProducts =
+  searchProducts;
 
-/* =====================================================
+
+/* =========================================================
    CART
-===================================================== */
+========================================================= */
 
 function addToCart(id) {
 
@@ -564,6 +825,7 @@ function addToCart(id) {
         Number(id)
     );
 
+
   if (!product) {
 
     alert(
@@ -573,8 +835,20 @@ function addToCart(id) {
     return;
   }
 
+
+  if (!product.seller_id) {
+
+    alert(
+      "Is product ka seller available nahi hai."
+    );
+
+    return;
+  }
+
+
   const stock =
     Number(product.stock || 0);
+
 
   if (stock <= 0) {
 
@@ -585,12 +859,14 @@ function addToCart(id) {
     return;
   }
 
+
   const existing =
     cart.find(
       item =>
         Number(item.id) ===
         Number(id)
     );
+
 
   if (existing) {
 
@@ -606,6 +882,7 @@ function addToCart(id) {
       return;
     }
 
+
     existing.quantity++;
 
   } else {
@@ -614,27 +891,27 @@ function addToCart(id) {
 
       id: product.id,
 
-      name:
-        product.name,
+      name: product.name,
 
       price:
-        Number(product.price || 0),
+        Number(
+          product.price || 0
+        ),
 
       image_url:
         product.image_url || "",
 
       seller_id:
-        product.seller_id || null,
+        product.seller_id,
 
-      stock:
-        stock,
+      stock: stock,
 
-      quantity:
-        1
+      quantity: 1
 
     });
 
   }
+
 
   saveCart();
 
@@ -642,12 +919,20 @@ function addToCart(id) {
 
   renderCart();
 
+
+  alert(
+    "✅ Product cart me add ho gaya."
+  );
+
 }
 
+window.addToCart =
+  addToCart;
 
-/* =====================================================
+
+/* =========================================================
    CART COUNT
-===================================================== */
+========================================================= */
 
 function updateCartCount() {
 
@@ -657,6 +942,7 @@ function updateCartCount() {
     );
 
   if (!element) return;
+
 
   const count =
     cart.reduce(
@@ -668,15 +954,19 @@ function updateCartCount() {
       0
     );
 
+
   element.textContent =
     count;
 
 }
 
+window.updateCartCount =
+  updateCartCount;
 
-/* =====================================================
+
+/* =========================================================
    SAVE CART
-===================================================== */
+========================================================= */
 
 function saveCart() {
 
@@ -688,24 +978,30 @@ function saveCart() {
 }
 
 
-/* =====================================================
+/* =========================================================
    OPEN CART
-===================================================== */
+========================================================= */
 
 function openCart() {
 
   document
-    .getElementById("cartModal")
+    .getElementById(
+      "cartModal"
+    )
     ?.classList.add("show");
+
 
   renderCart();
 
 }
 
+window.openCart =
+  openCart;
 
-/* =====================================================
+
+/* =========================================================
    RENDER CART
-===================================================== */
+========================================================= */
 
 function renderCart() {
 
@@ -719,7 +1015,9 @@ function renderCart() {
       "cartTotal"
     );
 
+
   if (!box) return;
+
 
   if (!cart.length) {
 
@@ -733,15 +1031,20 @@ function renderCart() {
       </div>
     `;
 
+
     if (totalElement) {
+
       totalElement.textContent =
         "₹0";
+
     }
 
     return;
   }
 
+
   let total = 0;
+
 
   box.innerHTML =
     cart.map(item => {
@@ -750,7 +1053,9 @@ function renderCart() {
         Number(item.price) *
         Number(item.quantity);
 
+
       total += itemTotal;
+
 
       const image =
         item.image_url ||
@@ -758,11 +1063,14 @@ function renderCart() {
           "Fashion"
         );
 
+
       return `
+
         <div class="cartItem">
 
           <img
             src="${escapeAttr(image)}"
+
             onerror="
               this.onerror=null;
               this.src='${escapeAttr(
@@ -773,6 +1081,7 @@ function renderCart() {
             "
           >
 
+
           <div>
 
             <b>
@@ -781,11 +1090,15 @@ function renderCart() {
               )}
             </b>
 
+
             <p>
               ₹${Number(
                 item.price
-              ).toLocaleString("en-IN")}
+              ).toLocaleString(
+                "en-IN"
+              )}
             </p>
+
 
             <div class="quantity">
 
@@ -800,11 +1113,13 @@ function renderCart() {
                 −
               </button>
 
+
               <span>
                 ${Number(
                   item.quantity
                 )}
               </span>
+
 
               <button
                 onclick="
@@ -821,8 +1136,10 @@ function renderCart() {
 
           </div>
 
+
           <button
             class="remove"
+
             onclick="
               removeFromCart(
                 ${Number(item.id)}
@@ -833,9 +1150,11 @@ function renderCart() {
           </button>
 
         </div>
+
       `;
 
     }).join("");
+
 
   if (totalElement) {
 
@@ -849,12 +1168,18 @@ function renderCart() {
 
 }
 
+window.renderCart =
+  renderCart;
 
-/* =====================================================
+
+/* =========================================================
    CHANGE QUANTITY
-===================================================== */
+========================================================= */
 
-function changeQty(id, change) {
+function changeQty(
+  id,
+  change
+) {
 
   const item =
     cart.find(
@@ -863,7 +1188,9 @@ function changeQty(id, change) {
         Number(id)
     );
 
+
   if (!item) return;
+
 
   if (
     change > 0 &&
@@ -878,9 +1205,14 @@ function changeQty(id, change) {
     return;
   }
 
-  item.quantity += change;
 
-  if (item.quantity <= 0) {
+  item.quantity +=
+    change;
+
+
+  if (
+    item.quantity <= 0
+  ) {
 
     cart =
       cart.filter(
@@ -891,6 +1223,7 @@ function changeQty(id, change) {
 
   }
 
+
   saveCart();
 
   updateCartCount();
@@ -899,10 +1232,13 @@ function changeQty(id, change) {
 
 }
 
+window.changeQty =
+  changeQty;
 
-/* =====================================================
+
+/* =========================================================
    REMOVE
-===================================================== */
+========================================================= */
 
 function removeFromCart(id) {
 
@@ -913,6 +1249,7 @@ function removeFromCart(id) {
         Number(id)
     );
 
+
   saveCart();
 
   updateCartCount();
@@ -921,10 +1258,13 @@ function removeFromCart(id) {
 
 }
 
+window.removeFromCart =
+  removeFromCart;
 
-/* =====================================================
-   CHECKOUT
-===================================================== */
+
+/* =========================================================
+   START CHECKOUT
+========================================================= */
 
 function startCheckout() {
 
@@ -937,11 +1277,14 @@ function startCheckout() {
     return;
   }
 
+
   closeModal(
     "cartModal"
   );
 
+
   renderCheckoutSummary();
+
 
   document
     .getElementById(
@@ -951,10 +1294,13 @@ function startCheckout() {
 
 }
 
+window.startCheckout =
+  startCheckout;
 
-/* =====================================================
+
+/* =========================================================
    CHECKOUT SUMMARY
-===================================================== */
+========================================================= */
 
 function renderCheckoutSummary() {
 
@@ -963,9 +1309,12 @@ function renderCheckoutSummary() {
       "checkoutItems"
     );
 
+
   if (!box) return;
 
+
   let total = 0;
+
 
   box.innerHTML =
     cart.map(item => {
@@ -974,9 +1323,12 @@ function renderCheckoutSummary() {
         Number(item.price) *
         Number(item.quantity);
 
+
       total += itemTotal;
 
+
       return `
+
         <div class="summaryItem">
 
           <img
@@ -987,6 +1339,7 @@ function renderCheckoutSummary() {
               )
             )}"
           >
+
 
           <div>
 
@@ -1003,9 +1356,12 @@ function renderCheckoutSummary() {
             )}
             × ₹${Number(
               item.price
-            ).toLocaleString("en-IN")}
+            ).toLocaleString(
+              "en-IN"
+            )}
 
           </div>
+
 
           <strong>
             ₹${itemTotal.toLocaleString(
@@ -1014,19 +1370,22 @@ function renderCheckoutSummary() {
           </strong>
 
         </div>
+
       `;
 
     }).join("");
+
 
   const subtotal =
     document.getElementById(
       "checkoutSubtotal"
     );
 
-  const totalElement =
+  const checkoutTotal =
     document.getElementById(
       "checkoutTotal"
     );
+
 
   if (subtotal) {
 
@@ -1038,9 +1397,10 @@ function renderCheckoutSummary() {
 
   }
 
-  if (totalElement) {
 
-    totalElement.textContent =
+  if (checkoutTotal) {
+
+    checkoutTotal.textContent =
       "₹" +
       total.toLocaleString(
         "en-IN"
@@ -1051,13 +1411,14 @@ function renderCheckoutSummary() {
 }
 
 
-/* =====================================================
+/* =========================================================
    PLACE ORDER
-===================================================== */
+========================================================= */
 
 async function placeOrder(e) {
 
   e.preventDefault();
+
 
   if (!cart.length) {
 
@@ -1068,35 +1429,47 @@ async function placeOrder(e) {
     return;
   }
 
+
   const name =
-    document.getElementById(
-      "coName"
-    )?.value.trim();
+    document
+      .getElementById("coName")
+      ?.value
+      ?.trim() || "";
+
 
   const mobile =
-    document.getElementById(
-      "coMobile"
-    )?.value.trim();
+    document
+      .getElementById("coMobile")
+      ?.value
+      ?.trim() || "";
+
 
   const address =
-    document.getElementById(
-      "coAddress"
-    )?.value.trim();
+    document
+      .getElementById("coAddress")
+      ?.value
+      ?.trim() || "";
+
 
   const city =
-    document.getElementById(
-      "coCity"
-    )?.value.trim();
+    document
+      .getElementById("coCity")
+      ?.value
+      ?.trim() || "";
+
 
   const state =
-    document.getElementById(
-      "coState"
-    )?.value.trim();
+    document
+      .getElementById("coState")
+      ?.value
+      ?.trim() || "";
+
 
   const pincode =
-    document.getElementById(
-      "coPincode"
-    )?.value.trim();
+    document
+      .getElementById("coPincode")
+      ?.value
+      ?.trim() || "";
 
 
   if (
@@ -1114,7 +1487,11 @@ async function placeOrder(e) {
   }
 
 
-  if (!/^\d{10}$/.test(mobile)) {
+  if (
+    !/^\d{10}$/.test(
+      mobile
+    )
+  ) {
 
     alert(
       "10 digit mobile number enter karo."
@@ -1124,7 +1501,11 @@ async function placeOrder(e) {
   }
 
 
-  if (!/^\d{6}$/.test(pincode)) {
+  if (
+    !/^\d{6}$/.test(
+      pincode
+    )
+  ) {
 
     alert(
       "6 digit pincode enter karo."
@@ -1144,6 +1525,32 @@ async function placeOrder(e) {
     );
 
 
+  /*
+     IMPORTANT:
+     Get a valid Supabase user.
+     This fixes orders.user_id NULL.
+  */
+
+  const user =
+    await ensureOrderUser();
+
+
+  if (!user) {
+
+    alert(
+      "Order save nahi ho pa raha. Supabase Anonymous Sign-Ins enable karo ya Account se login karo."
+    );
+
+    return;
+  }
+
+
+  console.log(
+    "ORDER USER ID:",
+    user.id
+  );
+
+
   const orderId =
     "BZ" +
     Date.now()
@@ -1154,6 +1561,9 @@ async function placeOrder(e) {
   currentOrder = {
 
     orderId,
+
+    user_id:
+      user.id,
 
     name,
 
@@ -1181,119 +1591,90 @@ async function placeOrder(e) {
 
 
   /*
-    IMPORTANT:
-    Buyer guest ho sakta hai.
-    Isliye user_id ko sirf tab bhejenge
-    jab Supabase Auth user logged in ho.
+     CREATE ORDER ROWS
   */
 
-  let authUser = null;
-
-  try {
-
-    const {
-      data
-    } =
-      await db.auth.getUser();
-
-    authUser =
-      data?.user || null;
-
-  } catch (err) {
-
-    console.log(
-      "No logged-in buyer"
-    );
-
-  }
-
-
   const rows =
-    cart.map(item => {
-
-      const row = {
-
-        seller_id:
-          item.seller_id || null,
-
-        product_id:
-          item.id,
-
-        product_name:
-          item.name,
-
-        image_url:
-          item.image_url || null,
-
-        unit_price:
-          Number(item.price),
-
-        customer_name:
-          name,
-
-        mobile:
-          mobile,
-
-        address:
-          address,
-
-        city:
-          city,
-
-        state:
-          state,
-
-        pincode:
-          pincode,
-
-        quantity:
-          Number(item.quantity),
-
-        payment_method:
-          "Cash on Delivery",
-
-        status:
-          "New",
-
-        order_no:
-          orderId,
-
-        total:
-          Number(item.price) *
-          Number(item.quantity)
-
-      };
-
+    cart.map(item => ({
 
       /*
-        user_id ONLY if buyer is logged in.
+         FIX:
+         user_id is now ALWAYS supplied.
       */
 
-      if (authUser?.id) {
+      user_id:
+        user.id,
 
-        row.user_id =
-          authUser.id;
+      seller_id:
+        item.seller_id,
 
-      }
+      product_id:
+        item.id,
 
+      product_name:
+        item.name,
 
-      return row;
+      image_url:
+        item.image_url ||
+        null,
 
-    });
+      unit_price:
+        Number(item.price),
+
+      customer_name:
+        name,
+
+      mobile:
+        mobile,
+
+      address:
+        address,
+
+      city:
+        city,
+
+      state:
+        state,
+
+      pincode:
+        pincode,
+
+      quantity:
+        Number(item.quantity),
+
+      payment_method:
+        "Cash on Delivery",
+
+      status:
+        "New",
+
+      order_no:
+        orderId,
+
+      total:
+        Number(item.price) *
+        Number(item.quantity)
+
+    }));
 
 
   console.log(
-    "Saving order:",
+    "SAVING ORDERS:",
     rows
   );
 
 
+  /*
+     INSERT ORDERS
+  */
+
   const {
+    data,
     error
-  } =
-    await db
-      .from("orders")
-      .insert(rows);
+  } = await db
+    .from("orders")
+    .insert(rows)
+    .select();
 
 
   if (error) {
@@ -1303,51 +1684,26 @@ async function placeOrder(e) {
       error
     );
 
+
     alert(
       "Order save nahi hua:\n\n" +
       error.message
     );
 
+
     return;
   }
 
 
+  console.log(
+    "ORDER SAVED:",
+    data
+  );
+
+
   /*
-    STOCK UPDATE
+     SUCCESS
   */
-
-  for (const item of cart) {
-
-    try {
-
-      const newStock =
-        Math.max(
-          0,
-          Number(item.stock) -
-          Number(item.quantity)
-        );
-
-      await db
-        .from("products")
-        .update({
-          stock: newStock
-        })
-        .eq(
-          "id",
-          item.id
-        );
-
-    } catch (err) {
-
-      console.log(
-        "Stock update error:",
-        err
-      );
-
-    }
-
-  }
-
 
   closeModal(
     "checkoutModal"
@@ -1378,14 +1734,18 @@ async function placeOrder(e) {
 
 }
 
+window.placeOrder =
+  placeOrder;
 
-/* =====================================================
+
+/* =========================================================
    WHATSAPP
-===================================================== */
+========================================================= */
 
 function sendOrderWhatsApp() {
 
   if (!currentOrder) return;
+
 
   const order =
     currentOrder;
@@ -1393,17 +1753,14 @@ function sendOrderWhatsApp() {
 
   const items =
     order.items
-      .map(item =>
-
-        `• ${item.name} × ${item.quantity} = ₹${
-          (
+      .map(
+        item =>
+          `• ${item.name} × ${item.quantity} = ₹${(
             Number(item.price) *
             Number(item.quantity)
           ).toLocaleString(
             "en-IN"
-          )
-        }`
-
+          )}`
       )
       .join("\n");
 
@@ -1442,10 +1799,13 @@ Total: ₹${order.total.toLocaleString(
 
 }
 
+window.sendOrderWhatsApp =
+  sendOrderWhatsApp;
 
-/* =====================================================
+
+/* =========================================================
    FINISH ORDER
-===================================================== */
+========================================================= */
 
 function finishOrder() {
 
@@ -1463,10 +1823,13 @@ function finishOrder() {
 
 }
 
+window.finishOrder =
+  finishOrder;
 
-/* =====================================================
+
+/* =========================================================
    ACCOUNT
-===================================================== */
+========================================================= */
 
 function openAccount() {
 
@@ -1476,10 +1839,18 @@ function openAccount() {
     )
     ?.classList.add("show");
 
+
   loginForm();
 
 }
 
+window.openAccount =
+  openAccount;
+
+
+/* =========================================================
+   LOGIN FORM
+========================================================= */
 
 function loginForm() {
 
@@ -1488,7 +1859,9 @@ function loginForm() {
       "accountForm"
     );
 
+
   if (!form) return;
+
 
   form.innerHTML = `
 
@@ -1498,11 +1871,13 @@ function loginForm() {
       placeholder="Email"
     >
 
+
     <input
       id="accountPassword"
       type="password"
       placeholder="Password"
     >
+
 
     <button
       type="button"
@@ -1514,12 +1889,20 @@ function loginForm() {
 
   `;
 
+
   setTab(
     "login"
   );
 
 }
 
+window.loginForm =
+  loginForm;
+
+
+/* =========================================================
+   SIGNUP FORM
+========================================================= */
 
 function signupForm() {
 
@@ -1528,7 +1911,9 @@ function signupForm() {
       "accountForm"
     );
 
+
   if (!form) return;
+
 
   form.innerHTML = `
 
@@ -1538,11 +1923,13 @@ function signupForm() {
       placeholder="Email"
     >
 
+
     <input
       id="accountPassword"
       type="password"
       placeholder="Password"
     >
+
 
     <button
       type="button"
@@ -1554,12 +1941,20 @@ function signupForm() {
 
   `;
 
+
   setTab(
     "signup"
   );
 
 }
 
+window.signupForm =
+  signupForm;
+
+
+/* =========================================================
+   ACCOUNT TABS
+========================================================= */
 
 function setTab(tab) {
 
@@ -1571,6 +1966,7 @@ function setTab(tab) {
       "selected",
       tab === "login"
     );
+
 
   document
     .getElementById(
@@ -1584,9 +1980,9 @@ function setTab(tab) {
 }
 
 
-/* =====================================================
+/* =========================================================
    LOGIN
-===================================================== */
+========================================================= */
 
 async function doLogin() {
 
@@ -1595,7 +1991,9 @@ async function doLogin() {
       .getElementById(
         "accountEmail"
       )
-      ?.value.trim();
+      ?.value
+      ?.trim();
+
 
   const password =
     document
@@ -1611,7 +2009,32 @@ async function doLogin() {
     );
 
 
+  if (
+    !email ||
+    !password
+  ) {
+
+    if (msg) {
+
+      msg.textContent =
+        "Email aur password required hai.";
+
+    }
+
+    return;
+  }
+
+
+  if (msg) {
+
+    msg.textContent =
+      "⏳ Login ho raha hai...";
+
+  }
+
+
   const {
+    data,
     error
   } =
     await db.auth.signInWithPassword({
@@ -1625,9 +2048,16 @@ async function doLogin() {
 
   if (error) {
 
+    console.error(
+      "Login error:",
+      error
+    );
+
+
     if (msg) {
 
       msg.textContent =
+        "❌ " +
         error.message;
 
     }
@@ -1636,28 +2066,35 @@ async function doLogin() {
   }
 
 
+  currentUser =
+    data?.user || null;
+
+
   if (msg) {
 
     msg.textContent =
-      "Login successful ✅";
+      "✅ Login successful!";
 
   }
 
 
-  setTimeout(() => {
-
-    closeModal(
-      "accountModal"
-    );
-
-  }, 500);
+  setTimeout(
+    () =>
+      closeModal(
+        "accountModal"
+      ),
+    500
+  );
 
 }
 
+window.doLogin =
+  doLogin;
 
-/* =====================================================
+
+/* =========================================================
    SIGNUP
-===================================================== */
+========================================================= */
 
 async function doSignup() {
 
@@ -1666,7 +2103,9 @@ async function doSignup() {
       .getElementById(
         "accountEmail"
       )
-      ?.value.trim();
+      ?.value
+      ?.trim();
+
 
   const password =
     document
@@ -1682,7 +2121,10 @@ async function doSignup() {
     );
 
 
-  if (!email || !password) {
+  if (
+    !email ||
+    !password
+  ) {
 
     if (msg) {
 
@@ -1695,7 +2137,9 @@ async function doSignup() {
   }
 
 
-  if (password.length < 6) {
+  if (
+    password.length < 6
+  ) {
 
     if (msg) {
 
@@ -1709,6 +2153,7 @@ async function doSignup() {
 
 
   const {
+    data,
     error
   } =
     await db.auth.signUp({
@@ -1733,19 +2178,26 @@ async function doSignup() {
   }
 
 
+  currentUser =
+    data?.user || null;
+
+
   if (msg) {
 
     msg.textContent =
-      "Account created. Email verify karo.";
+      "✅ Account created. Email verify karo.";
 
   }
 
 }
 
+window.doSignup =
+  doSignup;
 
-/* =====================================================
+
+/* =========================================================
    CLOSE MODAL
-===================================================== */
+========================================================= */
 
 function closeModal(id) {
 
@@ -1757,10 +2209,38 @@ function closeModal(id) {
 
 }
 
+window.closeModal =
+  closeModal;
 
-/* =====================================================
-   SECURITY
-===================================================== */
+
+/* =========================================================
+   AUTH STATE
+========================================================= */
+
+db.auth.onAuthStateChange(
+  function(
+    event,
+    session
+  ) {
+
+    currentUser =
+      session?.user ||
+      null;
+
+
+    console.log(
+      "AUTH:",
+      event,
+      currentUser?.id
+    );
+
+  }
+);
+
+
+/* =========================================================
+   SECURITY HELPERS
+========================================================= */
 
 function escapeHTML(value) {
 
@@ -1769,24 +2249,19 @@ function escapeHTML(value) {
   )
     .replace(
       /[&<>"']/g,
-      char => ({
-
-        "&":
-          "&amp;",
-
-        "<":
-          "&lt;",
-
-        ">":
-          "&gt;",
-
-        '"':
-          "&quot;",
-
-        "'":
-          "&#039;"
-
-      }[char])
+      char =>
+        ({
+          "&":
+            "&amp;",
+          "<":
+            "&lt;",
+          ">":
+            "&gt;",
+          '"':
+            "&quot;",
+          "'":
+            "&#039;"
+        }[char])
     );
 
 }
@@ -1805,58 +2280,37 @@ function escapeAttr(value) {
 }
 
 
-/* =====================================================
-   SUPABASE CONNECTION TEST
-===================================================== */
+/* =========================================================
+   GLOBAL ERROR HANDLER
+========================================================= */
 
-async function testSupabase() {
-
-  console.log(
-    "Testing Supabase..."
-  );
-
-  const {
-    data,
-    error
-  } =
-    await db
-      .from("products")
-      .select("id")
-      .limit(1);
-
-  if (error) {
+window.addEventListener(
+  "error",
+  function(event) {
 
     console.error(
-      "Supabase TEST FAILED:",
-      error
+      "BUYZO JS ERROR:",
+      event.error ||
+      event.message
     );
 
-    return false;
   }
-
-  console.log(
-    "Supabase TEST OK:",
-    data
-  );
-
-  return true;
-
-}
+);
 
 
-/* =====================================================
-   AUTO REFRESH PRODUCTS
-===================================================== */
+window.addEventListener(
+  "unhandledrejection",
+  function(event) {
 
-setInterval(() => {
-
-  if (
-    document.visibilityState ===
-    "visible"
-  ) {
-
-    loadProducts();
+    console.error(
+      "BUYZO PROMISE ERROR:",
+      event.reason
+    );
 
   }
+);
 
-}, 60000);
+
+console.log(
+  "✅ BUYZO app.js loaded successfully"
+);
